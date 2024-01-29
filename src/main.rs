@@ -13,13 +13,16 @@ enum Connection {
     WhiteWire,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-struct Tile {
+#[derive(Clone, PartialEq, Debug)]
+struct TileChoice {
     connections: [Connection; 4],
+    color: Color,
+    texture: Option<Texture2D>,
+    weight: i32,
 }
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 struct UndecidedTile {
-    possible_tiles: Vec<Tile>,
+    possible_tiles: Vec<TileChoice>,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -35,10 +38,25 @@ struct TileGrid {
 
 impl UndecidedTile {
     fn new() -> Self {
-        let mut possible_tiles = Vec::<Tile>::new();
+        let mut possible_tiles = Vec::<TileChoice>::new();
         for connection in [Connection::RedWire, Connection::BlueWire, Connection::GreenWire, Connection::YellowWire, Connection::WhiteWire].iter() {
             for i in 1..16 {
-                let mut tile = Tile { connections: [Connection::Black; 4] };
+                // Deterministic Colors
+                let color = match connection {
+                    Connection::Black => BLACK,
+                    Connection::RedWire => RED,
+                    Connection::BlueWire => BLUE,
+                    Connection::GreenWire => GREEN,
+                    Connection::YellowWire => YELLOW,
+                    Connection::WhiteWire => WHITE,
+                };
+                // Random Colors
+                // let colors = vec![RED, BLUE, GREEN, YELLOW, WHITE];
+                // let color = colors.choose(&mut ::rand::thread_rng()).unwrap().clone();
+
+
+
+                let mut tile = TileChoice {connections: [Connection::Black; 4], color: color, texture:None, weight: 1};
                 let mut conns = 0;
                 if i & 1 == 1 {
                     tile.connections[0] = connection.clone();
@@ -56,9 +74,10 @@ impl UndecidedTile {
                     tile.connections[3] = connection.clone();
                     conns += 1;
                 } 
-                if conns > 0 {
-                    possible_tiles.push(tile);
+                if conns == 2 {
+                    tile.weight = 1000;
                 }
+                possible_tiles.push(tile);
             }
         }
         Self {
@@ -69,32 +88,21 @@ impl UndecidedTile {
 
 
 fn draw_grid (grid: &TileGrid) {
-    for i in 0..grid.height+1 {
-        draw_line(grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
-                  (grid.width as f32) * grid.tilewidth + grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
-                  1.0, WHITE);
-    }
-    for i in 0..grid.width+1 {
-        draw_line((i as f32) * grid.tilewidth + grid.marginx, grid.marginy,
-                  (i as f32) * grid.tilewidth + grid.marginx, (grid.height as f32) * grid.tileheight + grid.marginy, 
-                  1.0, WHITE);
-    }
     for i in 0..grid.width {
         for j in 0..grid.height {
             let tile = &grid.tilegrid[i as usize][j as usize];
             for k in 0..4 {
-                let connection = tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap().connections[k];
-                let color = match connection {
-                    Connection::Black => continue,
-                    Connection::RedWire => RED,
-                    Connection::BlueWire => BLUE,
-                    Connection::GreenWire => GREEN,
-                    Connection::YellowWire => YELLOW,
-                    Connection::WhiteWire => WHITE,
-                };
+                let tileopt = tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap();
+                let connection = tileopt.connections[k];
+
+                if connection == Connection::Black {
+                    continue;
+                }
+                let color = tileopt.color;
+
                 let tx = (i as f32) * grid.tilewidth + grid.marginx;
                 let ty = (j as f32) * grid.tileheight + grid.marginy;
-                if false { // ribbon style
+                if true { // ribbon style
                     let (x, y) = match k {
                         0 => (tx+(grid.tilewidth/3.0), ty),
                         1 => (tx+(grid.tilewidth/3.0), ty+(grid.tileheight/1.5)),
@@ -105,7 +113,7 @@ fn draw_grid (grid: &TileGrid) {
                     draw_rectangle(x, y, grid.tilewidth/3.0, grid.tileheight/3.0, color);
                     draw_rectangle(tx+(grid.tilewidth/3.0), ty+(grid.tileheight/3.0), grid.tilewidth/3.0, grid.tileheight/3.0, color)
                 }
-                if true { // triangle style
+                if false { // triangle style
                     let tl = Vec2::new(tx+grid.tilewidth*0.1, ty+grid.tileheight*0.1);
                     let tr = Vec2::new(tx+grid.tilewidth*0.9, ty+grid.tileheight*0.1);
                     let bl = Vec2::new(tx+grid.tilewidth*0.1, ty+grid.tileheight*0.9);
@@ -122,6 +130,28 @@ fn draw_grid (grid: &TileGrid) {
             }
         }
     }
+    for i in 0..grid.height+1 {
+        draw_line(grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
+                  (grid.width as f32) * grid.tilewidth + grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
+                  1.0, WHITE);
+    }
+    for i in 0..grid.width+1 {
+        draw_line((i as f32) * grid.tilewidth + grid.marginx, grid.marginy,
+                  (i as f32) * grid.tilewidth + grid.marginx, (grid.height as f32) * grid.tileheight + grid.marginy, 
+                  1.0, WHITE);
+    }
+}
+
+fn pick_option (tile: UndecidedTile) -> UndecidedTile {
+    let mut weights = Vec::<i32>::new();
+    for tile_option in tile.possible_tiles.iter() {
+        weights.push(tile_option.weight);
+    }
+    let dist = WeightedIndex::new(&weights).unwrap();
+    let tile_option = tile.possible_tiles[dist.sample(&mut ::rand::thread_rng())].clone();
+    let mut new_tile = tile.clone();
+    new_tile.possible_tiles = vec![tile_option];
+    new_tile
 }
 
 fn propegate_changes (grid: &mut TileGrid, x: i32, y: i32) {
@@ -162,7 +192,7 @@ fn propegate_changes (grid: &mut TileGrid, x: i32, y: i32) {
             let neighbor_tile = grid.tilegrid[neighbor_direction_indices.0 as usize][neighbor_direction_indices.1 as usize].clone();
             let mut new_neighbor_tile = neighbor_tile.clone();
             for neighbor_tile_option_index in (0..neighbor_tile.possible_tiles.len()).rev() {
-                let neighbor_tile_option = neighbor_tile.possible_tiles[neighbor_tile_option_index];
+                let neighbor_tile_option = neighbor_tile.possible_tiles[neighbor_tile_option_index].clone();
                 let neighbor_connection = neighbor_tile_option.connections[neighbor_connection_direction];
                 if !possible_connections.contains(&neighbor_connection) {
                     new_neighbor_tile.possible_tiles.remove(neighbor_tile_option_index);
@@ -183,8 +213,8 @@ async fn main() {
     // create a grid of new undecided tiles
     let mut grid = TileGrid{
         tilegrid: Vec::<Vec<UndecidedTile>>::new(),
-        width: 10,
-        height: 10,
+        width: 60,
+        height: 30,
         tilewidth: 25.0,
         tileheight: 25.0,
         marginx: 25.0,
@@ -214,6 +244,7 @@ async fn main() {
         let mut weights = Vec::<i32>::new();
         let mut total_seen = 0;
         const LARGE_WEIGHT: i32 = 1;
+        const SMALL_WEIGHT: i32 = 0;
         for i in 0..grid.width {
             for j in 0..grid.height {
                 let tile = &grid.tilegrid[i as usize][j as usize];
@@ -223,14 +254,14 @@ async fn main() {
                 total_seen += 1;
                 if tile.possible_tiles.len() < least_seen {
                     least_seen = tile.possible_tiles.len();
-                    weights = vec![1;total_seen-1];
+                    weights = vec![SMALL_WEIGHT;total_seen-1];
                     weights.push(LARGE_WEIGHT);
                 }
                 else if tile.possible_tiles.len() == least_seen {
                     weights.push(LARGE_WEIGHT);
                 }
                 else {
-                    weights.push(1);
+                    weights.push(SMALL_WEIGHT);
                 }
                 candidate_indices.push((i, j));
             }
@@ -243,10 +274,25 @@ async fn main() {
             let dist = WeightedIndex::new(&weights).unwrap();
             let (x_index, y_index) = candidate_indices[dist.sample(&mut ::rand::thread_rng())];
             let mut tile = grid.tilegrid[x_index as usize][y_index as usize].clone();
-            tile = UndecidedTile{possible_tiles: vec![*tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap()]};
+            tile = pick_option(tile);
             grid.tilegrid[x_index as usize][y_index as usize] = tile;
             propegate_changes(&mut grid, x_index, y_index);
         }
         next_frame().await
     }
 }
+
+// use std::thread;
+// fn mainx(){
+//     let mut worked = 0;
+//     for _ in 0..1000 {
+//         let thread = thread::spawn(|| {
+//             main();
+//         });
+//         let result = thread.join();
+//         if result.is_ok() {
+//             worked += 1;
+//         }
+//     }
+//     println!("Worked: {}", worked);
+// }
