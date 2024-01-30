@@ -89,29 +89,29 @@ struct TileGrid {
 
 impl TileGrid {
     fn expand_to(&mut self, width: i32, height: i32) {
-        while self.width < width {
+        while self.height < height {
             for row in self.tilegrid.iter_mut() {
                 row.push(UndecidedTile::new());
             }
-            self.width += 1;
+            self.height += 1;
         }
-        while self.height < height {
+        while self.width < width {
             let mut row = Vec::<UndecidedTile>::new();
-            for _ in 0..self.width {
+            for _ in 0..self.height {
                 row.push(UndecidedTile::new());
             }
             self.tilegrid.push(row);
-            self.height += 1;
-        }
-        if self.height > height {
-            self.tilegrid.truncate(height as usize);
-            self.height = height;
+            self.width += 1;
         }
         if self.width > width {
-            for row in self.tilegrid.iter_mut() {
-                row.truncate(width as usize);
-            }
+            self.tilegrid.truncate(width as usize);
             self.width = width;
+        }
+        if self.height > height {
+            for row in self.tilegrid.iter_mut() {
+                row.truncate(height as usize);
+            }
+            self.height = height;
         }
     }
 }
@@ -119,7 +119,7 @@ impl TileGrid {
 impl UndecidedTile {
     fn new() -> Self {
         let mut possible_tiles = Vec::<TileChoice>::new();
-        for connection in [Connection::RedWire, Connection::BlueWire, /*Connection::GreenWire, Connection::YellowWire, Connection::WhiteWire*/].iter() {
+        for connection in [/*Connection::RedWire,*/ Connection::BlueWire, /*Connection::GreenWire, Connection::YellowWire, Connection::WhiteWire*/].iter() {
             for i in 1..16 {
                 let mut new_tile = TileChoice {connections: [Connection::Black; 4], color: BLACK, texture:None, weight: 1};
                 let mut conns = 0;
@@ -139,14 +139,17 @@ impl UndecidedTile {
                     new_tile.connections[3] = connection.clone();
                     conns += 1;
                 } 
-                if conns != 2 {
+                if conns == 1 {
                     continue;
                 }
-                if i == 3 || i == 12 {
-                    new_tile.weight = 2;
+                if i == 0 {
+                    new_tile.weight = 50;
+                }
+                else if i == 12 || i == 3 {
+                    new_tile.weight = 10;
                 }
                 else {
-                    new_tile.weight = 3;
+                    new_tile.weight = 2;
                 }
                 // Deterministic Colors
                 let color = match connection {
@@ -188,12 +191,12 @@ impl UndecidedTile {
 }
 
 
-fn draw_grid (grid: &TileGrid) {
+fn draw_grid (grid: &TileGrid, rendermode: Rendermode) {
     for i in 0..grid.width {
         for j in 0..grid.height {
             let tile = &grid.tilegrid[i as usize][j as usize];
+            let tileopt = tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap();
             for k in 0..4 {
-                let tileopt = tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap();
                 let connection = tileopt.connections[k];
 
                 if connection == Connection::Black {
@@ -203,14 +206,14 @@ fn draw_grid (grid: &TileGrid) {
 
                 let tx = (i as f32) * grid.tilewidth + grid.marginx;
                 let ty = (j as f32) * grid.tileheight + grid.marginy;
-                if tileopt.texture.is_some() {
+                if rendermode == Rendermode::Texture && tileopt.texture.is_some() {
                     let texture = tileopt.texture.as_ref().unwrap();
                     draw_texture_ex(texture, tx, ty, color, DrawTextureParams {
                         dest_size: Some(Vec2::new(grid.tilewidth, grid.tileheight)),
                         ..Default::default()
                     });
                 }
-                else if true { // ribbon style
+                else if rendermode == Rendermode::Ribbon {
                     let (x, y) = match k {
                         0 => (tx+(grid.tilewidth/3.0), ty),
                         1 => (tx+(grid.tilewidth/3.0), ty+(grid.tileheight/1.5)),
@@ -221,11 +224,13 @@ fn draw_grid (grid: &TileGrid) {
                     draw_rectangle(x, y, grid.tilewidth/3.0, grid.tileheight/3.0, color);
                     draw_rectangle(tx+(grid.tilewidth/3.0), ty+(grid.tileheight/3.0), grid.tilewidth/3.0, grid.tileheight/3.0, color)
                 }
-                else { // triangle style
-                    let tl = Vec2::new(tx+grid.tilewidth*0.1, ty+grid.tileheight*0.1);
-                    let tr = Vec2::new(tx+grid.tilewidth*0.9, ty+grid.tileheight*0.1);
-                    let bl = Vec2::new(tx+grid.tilewidth*0.1, ty+grid.tileheight*0.9);
-                    let br = Vec2::new(tx+grid.tilewidth*0.9, ty+grid.tileheight*0.9);
+                else if rendermode == Rendermode::Triangle {
+                    const MARGIN1: f32 = 1.0;
+                    const MARGIN2: f32 = 1.0-MARGIN1;
+                    let tl = Vec2::new(tx+grid.tilewidth*MARGIN2, ty+grid.tileheight*MARGIN2);
+                    let tr = Vec2::new(tx+grid.tilewidth*MARGIN1, ty+grid.tileheight*MARGIN2);
+                    let bl = Vec2::new(tx+grid.tilewidth*MARGIN2, ty+grid.tileheight*MARGIN1);
+                    let br = Vec2::new(tx+grid.tilewidth*MARGIN1, ty+grid.tileheight*MARGIN1);
                     let center = Vec2::new(tx+(grid.tilewidth/2.0), ty+(grid.tileheight/2.0));
                     let (v1, v2, v3) = match k {
                         0 => (tr, tl, center),
@@ -238,16 +243,16 @@ fn draw_grid (grid: &TileGrid) {
             }
         }
     }
-    // for i in 0..grid.height+1 {
-    //     draw_line(grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
-    //               (grid.width as f32) * grid.tilewidth + grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
-    //               1.0, WHITE);
-    // }
-    // for i in 0..grid.width+1 {
-    //     draw_line((i as f32) * grid.tilewidth + grid.marginx, grid.marginy,
-    //               (i as f32) * grid.tilewidth + grid.marginx, (grid.height as f32) * grid.tileheight + grid.marginy, 
-    //               1.0, WHITE);
-    // }
+    for i in 0..grid.height+1 {
+        draw_line(grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
+                  (grid.width as f32) * grid.tilewidth + grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
+                  1.0, WHITE);
+    }
+    for i in 0..grid.width+1 {
+        draw_line((i as f32) * grid.tilewidth + grid.marginx, grid.marginy,
+                  (i as f32) * grid.tilewidth + grid.marginx, (grid.height as f32) * grid.tileheight + grid.marginy, 
+                  1.0, WHITE);
+    }
 }
 
 fn pick_option (tile: UndecidedTile) -> UndecidedTile {
@@ -269,7 +274,7 @@ fn propegate_changes (grid: &mut TileGrid, x: i32, y: i32) {
     while index < todo_indices.len() {
         let (x, y) = todo_indices[index];
         index += 1;
-        if x < 0 || x >= grid.height || y < 0 || y >= grid.width {
+        if x < 0 || x >= grid.width || y < 0 || y >= grid.height {
             continue;
         }
         let tile = grid.tilegrid[x as usize][y as usize].clone();
@@ -287,7 +292,7 @@ fn propegate_changes (grid: &mut TileGrid, x: i32, y: i32) {
                 2 => 3,
                 _ => 2,
             };
-            if neighbor_direction_indices.0 < 0 || neighbor_direction_indices.0 >= grid.height || neighbor_direction_indices.1 < 0 || neighbor_direction_indices.1 >= grid.width {
+            if neighbor_direction_indices.0 < 0 || neighbor_direction_indices.0 >= grid.width || neighbor_direction_indices.1 < 0 || neighbor_direction_indices.1 >= grid.height {
                 continue;
             }
             let mut possible_connections = Vec::<Connection>::new();
@@ -316,6 +321,13 @@ fn propegate_changes (grid: &mut TileGrid, x: i32, y: i32) {
     }   
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Rendermode {
+    Texture,
+    Ribbon,
+    Triangle,
+}
+
 #[macroquad::main("WavefunctionCollapse")]
 async fn main() {
     // texture loading 
@@ -330,13 +342,15 @@ async fn main() {
     // create a grid of new undecided tiles
     let mut grid = TileGrid{
         tilegrid: Vec::<Vec<UndecidedTile>>::new(),
-        width: 2,
-        height: 2,
-        tilewidth: 5.0,
-        tileheight: 5.0,
+        width: 20,
+        height: 10,
+        tilewidth: 50.0,
+        tileheight: 50.0,
         marginx: 25.0,
         marginy: 25.0,
     };
+    let mut autogenerate = false;
+    let mut rendermode = Rendermode::Ribbon;
     for _ in 0..grid.width {
         let mut row = Vec::<UndecidedTile>::new();
         for _ in 0..grid.height {
@@ -351,80 +365,108 @@ async fn main() {
     }
 
     loop {
-        clear_background(BLACK);
-        // draw a grid of black lines
-        draw_grid(&grid);
+        clear_background(GREEN);
+        draw_grid(&grid, rendermode);
+        if is_key_down(KeyCode::Space) {
+            autogenerate = true;
+        }
+        if is_key_down(KeyCode::T) {
+            rendermode = Rendermode::Texture;
+        }
+        if is_key_down(KeyCode::R) {
+            rendermode = Rendermode::Ribbon;
+        }
+        if is_key_down(KeyCode::Y) {
+            rendermode = Rendermode::Triangle;
+        }
         // pick a random undecided tile
-        for _ in 0..10 {
-        let mut candidate_indices = Vec::<(i32, i32)>::new();
-        let mut least_seen = 100000;
-        let mut weights = Vec::<i32>::new();
-        let mut total_seen = 0;
-        const LARGE_WEIGHT: i32 = 1;
-        const SMALL_WEIGHT: i32 = 0;
-        for i in 0..grid.height {
-            for j in 0..grid.width {
-                let tile = &grid.tilegrid[i as usize][j as usize];
-                if tile.possible_tiles.len() == 1 {
-                    continue;
+        for _ in 0..1 {
+            let mut candidate_indices = Vec::<(i32, i32)>::new();
+            let mut least_seen = 100000;
+            let mut weights = Vec::<i32>::new();
+            let mut total_seen = 0;
+            const LARGE_WEIGHT: i32 = 1;
+            const SMALL_WEIGHT: i32 = 0;
+            for i in 0..grid.width {
+                for j in 0..grid.height {
+                    let tile = &grid.tilegrid[i as usize][j as usize];
+                    if tile.possible_tiles.len() == 1 {
+                        continue;
+                    }
+                    total_seen += 1;
+                    if tile.possible_tiles.len() < least_seen {
+                        least_seen = tile.possible_tiles.len();
+                        weights = vec![SMALL_WEIGHT;total_seen-1];
+                        weights.push(LARGE_WEIGHT);
+                    }
+                    else if tile.possible_tiles.len() == least_seen {
+                        weights.push(LARGE_WEIGHT);
+                    }
+                    else {
+                        weights.push(SMALL_WEIGHT);
+                    }
+                    candidate_indices.push((i, j));
                 }
-                total_seen += 1;
-                if tile.possible_tiles.len() < least_seen {
-                    least_seen = tile.possible_tiles.len();
-                    weights = vec![SMALL_WEIGHT;total_seen-1];
-                    weights.push(LARGE_WEIGHT);
-                }
-                else if tile.possible_tiles.len() == least_seen {
-                    weights.push(LARGE_WEIGHT);
+            }
+
+            if candidate_indices.len() == 0 {
+                if grid.width < 60 || grid.height < 30 {
+                    // let mut target_width = grid.width;
+                    // let mut target_height = grid.height;
+                    // if grid.width < 60 {
+                    //     target_width += 1;
+                    // }
+                    // else {
+                    //     target_height += 1;
+                    // }
+                    // grid.expand_to(target_width, target_height);
+                    // grid.tileheight = (screen_height() - grid.marginy*2.0) / (grid.height as f32);
+                    // grid.tilewidth = (screen_width() - grid.marginx*2.0) / (grid.width as f32);
+                    // for i in 0..grid.width {
+                    //     for j in 0..grid.height {
+                    //         propegate_changes(&mut grid, i, j);
+                    //     }
+                    // }
                 }
                 else {
-                    weights.push(SMALL_WEIGHT);
+                    // for x in 0..grid.width {
+                    //     for y in 0..grid.height-1 {
+                    //         grid.tilegrid[x as usize][y as usize] = grid.tilegrid[x as usize][(y+1) as usize].clone();
+                    //         grid.tilegrid[x as usize].pop();
+                    //         grid.tilegrid[x as usize].push(UndecidedTile::new());
+                    //     }
+                    // }
+                    // for x in 0..grid.width {
+                    //     for y in grid.height-3..grid.height {
+                    //         propegate_changes(&mut grid, x, y);
+                    //     }
+                    // }
                 }
-                candidate_indices.push((i, j));
-            }
-        }
-
-        if candidate_indices.len() == 0 {
-            if grid.width < 40 {
-                let target_width = grid.width+1;
-                let mut target_height = grid.height;
-                if grid.height < 20 {
-                    target_height += 1;
-                }
-                grid.expand_to(target_width, target_height);
-                grid.tileheight = (screen_height() - grid.marginy*2.0) / (grid.height as f32);
-                grid.tilewidth = (screen_width() - grid.marginx*2.0) / (grid.width as f32);
-                for i in 0..grid.width {
-                    for j in 0..grid.height {
-                        propegate_changes(&mut grid, i, j);
-                    }
-                }
+                
             }
             else {
-                for row in 0..grid.tilegrid.len()-1 {
-                    grid.tilegrid[row] = grid.tilegrid[row+1].clone();
+                let mut x_index = 0;
+                let mut y_index = 0;
+                if autogenerate {
+                    let dist = WeightedIndex::new(&weights).unwrap();
+                    (x_index, y_index) = candidate_indices[dist.sample(&mut ::rand::thread_rng())];
                 }
-                grid.tilegrid.pop();
-                let mut new_row = Vec::<UndecidedTile>::new();
-                for _ in 0..grid.width {
-                    new_row.push(UndecidedTile::new());
-                }
-                grid.tilegrid.push(new_row);
-                for i in 0..grid.width {
-                    let rowindex = grid.height-1;
-                    propegate_changes(&mut grid, i, rowindex);
+                else {
+                    if is_mouse_button_down(MouseButton::Left) {
+                        let mouse_x_pos = mouse_position().0;
+                        let mouse_y_pos = mouse_position().1;
+                        x_index = ((mouse_x_pos - grid.marginx) / grid.tilewidth) as i32;
+                        y_index = ((mouse_y_pos - grid.marginy) / grid.tileheight) as i32;
+                        if y_index < 0 || y_index >= grid.height || x_index < 0 || x_index >= grid.width {
+                            continue;
+                        }
+                    }
+                    let mut tile = grid.tilegrid[x_index as usize][y_index as usize].clone();
+                    tile = pick_option(tile);
+                    grid.tilegrid[x_index as usize][y_index as usize] = tile;
+                    propegate_changes(&mut grid, x_index, y_index);
                 }
             }
-            
-        }
-        else {
-            let dist = WeightedIndex::new(&weights).unwrap();
-            let (x_index, y_index) = candidate_indices[dist.sample(&mut ::rand::thread_rng())];
-            let mut tile = grid.tilegrid[x_index as usize][y_index as usize].clone();
-            tile = pick_option(tile);
-            grid.tilegrid[x_index as usize][y_index as usize] = tile;
-            propegate_changes(&mut grid, x_index, y_index);
-        }
         }
         next_frame().await;
     }
