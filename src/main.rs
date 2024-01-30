@@ -2,6 +2,8 @@ use macroquad::prelude::*;
 use ::rand::seq::SliceRandom;
 use ::rand::distributions::WeightedIndex;
 use ::rand::prelude::*;
+mod render;
+use crate::render::draw_tilegrid;
 // use std::thread;
 // use std::ops::Index;
 
@@ -120,7 +122,7 @@ impl UndecidedTile {
     fn new() -> Self {
         let mut possible_tiles = Vec::<TileChoice>::new();
         for connection in [/*Connection::RedWire,*/ Connection::BlueWire, /*Connection::GreenWire, Connection::YellowWire, Connection::WhiteWire*/].iter() {
-            for i in 1..16 {
+            for i in 0..16 {
                 let mut new_tile = TileChoice {connections: [Connection::Black; 4], color: BLACK, texture:None, weight: 1};
                 let mut conns = 0;
                 if i & 1 == 1 {
@@ -139,11 +141,11 @@ impl UndecidedTile {
                     new_tile.connections[3] = connection.clone();
                     conns += 1;
                 } 
-                if conns == 1 {
+                if conns != 2 && conns != 0 {
                     continue;
                 }
                 if i == 0 {
-                    new_tile.weight = 50;
+                    new_tile.weight = 100;
                 }
                 else if i == 12 || i == 3 {
                     new_tile.weight = 10;
@@ -191,69 +193,69 @@ impl UndecidedTile {
 }
 
 
-fn draw_grid (grid: &TileGrid, rendermode: Rendermode) {
-    for i in 0..grid.width {
-        for j in 0..grid.height {
-            let tile = &grid.tilegrid[i as usize][j as usize];
-            let tileopt = tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap();
-            for k in 0..4 {
-                let connection = tileopt.connections[k];
-
-                if connection == Connection::Black {
-                    continue;
-                }
-                let color = tileopt.color;
-
-                let tx = (i as f32) * grid.tilewidth + grid.marginx;
-                let ty = (j as f32) * grid.tileheight + grid.marginy;
-                if rendermode == Rendermode::Texture && tileopt.texture.is_some() {
-                    let texture = tileopt.texture.as_ref().unwrap();
-                    draw_texture_ex(texture, tx, ty, color, DrawTextureParams {
-                        dest_size: Some(Vec2::new(grid.tilewidth, grid.tileheight)),
-                        ..Default::default()
-                    });
-                }
-                else if rendermode == Rendermode::Ribbon {
-                    let (x, y) = match k {
-                        0 => (tx+(grid.tilewidth/3.0), ty),
-                        1 => (tx+(grid.tilewidth/3.0), ty+(grid.tileheight/1.5)),
-                        2 => (tx, ty+(grid.tileheight/3.0)),
-                        3 => (tx+(grid.tilewidth/1.5), ty+(grid.tileheight/3.0)),
-                        _ => (tx, ty),
-                    };
-                    draw_rectangle(x, y, grid.tilewidth/3.0, grid.tileheight/3.0, color);
-                    draw_rectangle(tx+(grid.tilewidth/3.0), ty+(grid.tileheight/3.0), grid.tilewidth/3.0, grid.tileheight/3.0, color)
-                }
-                else if rendermode == Rendermode::Triangle {
-                    const MARGIN1: f32 = 1.0;
-                    const MARGIN2: f32 = 1.0-MARGIN1;
-                    let tl = Vec2::new(tx+grid.tilewidth*MARGIN2, ty+grid.tileheight*MARGIN2);
-                    let tr = Vec2::new(tx+grid.tilewidth*MARGIN1, ty+grid.tileheight*MARGIN2);
-                    let bl = Vec2::new(tx+grid.tilewidth*MARGIN2, ty+grid.tileheight*MARGIN1);
-                    let br = Vec2::new(tx+grid.tilewidth*MARGIN1, ty+grid.tileheight*MARGIN1);
-                    let center = Vec2::new(tx+(grid.tilewidth/2.0), ty+(grid.tileheight/2.0));
-                    let (v1, v2, v3) = match k {
-                        0 => (tr, tl, center),
-                        1 => (bl, br, center),
-                        2 => (tl, bl, center),
-                        _ => (br, tr, center),
-                    };
-                    draw_triangle(v1, v2, v3, color);
-                }
-            }
-        }
-    }
-    for i in 0..grid.height+1 {
-        draw_line(grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
-                  (grid.width as f32) * grid.tilewidth + grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
-                  1.0, WHITE);
-    }
-    for i in 0..grid.width+1 {
-        draw_line((i as f32) * grid.tilewidth + grid.marginx, grid.marginy,
-                  (i as f32) * grid.tilewidth + grid.marginx, (grid.height as f32) * grid.tileheight + grid.marginy, 
-                  1.0, WHITE);
-    }
-}
+// fn draw_grid (grid: &TileGrid, rendermode: Rendermode) {
+//     for i in 0..grid.width {
+//         for j in 0..grid.height {
+//             let tile = &grid.tilegrid[i as usize][j as usize];
+//             let tileopt = tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap();
+//             for k in 0..4 {
+//                 let connection = tileopt.connections[k];
+//
+//                 if connection == Connection::Black {
+//                     continue;
+//                 }
+//                 let color = tileopt.color;
+//
+//                 let tx = (i as f32) * grid.tilewidth + grid.marginx;
+//                 let ty = (j as f32) * grid.tileheight + grid.marginy;
+//                 if rendermode == Rendermode::Texture && tileopt.texture.is_some() {
+//                     let texture = tileopt.texture.as_ref().unwrap();
+//                     draw_texture_ex(texture, tx, ty, color, DrawTextureParams {
+//                         dest_size: Some(Vec2::new(grid.tilewidth, grid.tileheight)),
+//                         ..Default::default()
+//                     });
+//                 }
+//                 else if rendermode == Rendermode::Ribbon {
+//                     let (x, y) = match k {
+//                         0 => (tx+(grid.tilewidth/3.0), ty),
+//                         1 => (tx+(grid.tilewidth/3.0), ty+(grid.tileheight/1.5)),
+//                         2 => (tx, ty+(grid.tileheight/3.0)),
+//                         3 => (tx+(grid.tilewidth/1.5), ty+(grid.tileheight/3.0)),
+//                         _ => (tx, ty),
+//                     };
+//                     draw_rectangle(x, y, grid.tilewidth/3.0, grid.tileheight/3.0, color);
+//                     draw_rectangle(tx+(grid.tilewidth/3.0), ty+(grid.tileheight/3.0), grid.tilewidth/3.0, grid.tileheight/3.0, color)
+//                 }
+//                 else if rendermode == Rendermode::Triangle {
+//                     const MARGIN1: f32 = 1.0;
+//                     const MARGIN2: f32 = 1.0-MARGIN1;
+//                     let tl = Vec2::new(tx+grid.tilewidth*MARGIN2, ty+grid.tileheight*MARGIN2);
+//                     let tr = Vec2::new(tx+grid.tilewidth*MARGIN1, ty+grid.tileheight*MARGIN2);
+//                     let bl = Vec2::new(tx+grid.tilewidth*MARGIN2, ty+grid.tileheight*MARGIN1);
+//                     let br = Vec2::new(tx+grid.tilewidth*MARGIN1, ty+grid.tileheight*MARGIN1);
+//                     let center = Vec2::new(tx+(grid.tilewidth/2.0), ty+(grid.tileheight/2.0));
+//                     let (v1, v2, v3) = match k {
+//                         0 => (tr, tl, center),
+//                         1 => (bl, br, center),
+//                         2 => (tl, bl, center),
+//                         _ => (br, tr, center),
+//                     };
+//                     draw_triangle(v1, v2, v3, color);
+//                 }
+//             }
+//         }
+//     }
+//     for i in 0..grid.height+1 {
+//         draw_line(grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
+//                   (grid.width as f32) * grid.tilewidth + grid.marginx, (i as f32) * grid.tileheight + grid.marginy,
+//                   1.0, WHITE);
+//     }
+//     for i in 0..grid.width+1 {
+//         draw_line((i as f32) * grid.tilewidth + grid.marginx, grid.marginy,
+//                   (i as f32) * grid.tilewidth + grid.marginx, (grid.height as f32) * grid.tileheight + grid.marginy, 
+//                   1.0, WHITE);
+//     }
+// }
 
 fn pick_option (tile: UndecidedTile) -> UndecidedTile {
     let mut weights = Vec::<i32>::new();
@@ -332,6 +334,7 @@ enum Rendermode {
 async fn main() {
     // texture loading 
 
+  //2:50 sounds ai generate, 
     // for textureindex in 0..15 {
     //     let thread = thread::spawn(|| async {
     //         let texturepath = 
@@ -366,9 +369,12 @@ async fn main() {
 
     loop {
         clear_background(GREEN);
-        draw_grid(&grid, rendermode);
+        draw_tilegrid(&grid, rendermode);
         if is_key_down(KeyCode::Space) {
             autogenerate = true;
+        }
+        else {
+            autogenerate = false;
         }
         if is_key_down(KeyCode::T) {
             rendermode = Rendermode::Texture;
@@ -386,7 +392,7 @@ async fn main() {
             let mut weights = Vec::<i32>::new();
             let mut total_seen = 0;
             const LARGE_WEIGHT: i32 = 1;
-            const SMALL_WEIGHT: i32 = 0;
+            const SMALL_WEIGHT: i32 = 3;
             for i in 0..grid.width {
                 for j in 0..grid.height {
                     let tile = &grid.tilegrid[i as usize][j as usize];
@@ -461,11 +467,11 @@ async fn main() {
                             continue;
                         }
                     }
-                    let mut tile = grid.tilegrid[x_index as usize][y_index as usize].clone();
-                    tile = pick_option(tile);
-                    grid.tilegrid[x_index as usize][y_index as usize] = tile;
-                    propegate_changes(&mut grid, x_index, y_index);
                 }
+                let mut tile = grid.tilegrid[x_index as usize][y_index as usize].clone();
+                tile = pick_option(tile);
+                grid.tilegrid[x_index as usize][y_index as usize] = tile;
+                propegate_changes(&mut grid, x_index, y_index);
             }
         }
         next_frame().await;
