@@ -11,7 +11,14 @@ pub fn draw_tilegrid (grid: &TileGrid) {
                 if connection == Connection::Black {
                     continue;
                 }
-                let color = tileopt.color;
+                let color = match connection {
+                    Connection::Red => RED,
+                    Connection::Green => GREEN,
+                    Connection::Blue => BLUE,
+                    Connection::Yellow => YELLOW,
+                    Connection::White => WHITE,
+                    Connection::Black => BLACK,
+                };
 
                 let tx = (i as f32) * grid.tilewidth + grid.marginx;
                 let ty = (j as f32) * grid.tileheight + grid.marginy;

@@ -3,13 +3,15 @@ My implementation of wavefunction collapse
 Layout:
 
 main.rs imports a renderer which should define
-- fn draw_tilegrid (grid: &TileGrid) // draws a tilegrid to the screen
-- enum TileTexture // has one variant for each texture a tile should have, can have one variant if tiles are rendered based on connections
+- `fn draw_tilegrid (grid: &TileGrid)` // draws a tilegrid to the screen
+- //Anything else it needs in order to render, such as `enum TileTexture`
 and a wavefunction which should define
-- struct TileChoice {
-    connections: [Connection; 4], // up down left right
-    texture: TileTexture, // the texture that the renderer will render it with
-    weight: i32, // The weight of the tile in the collapse function
-  }
-- impl UndecidedTile {fn new()} // Generates a new blank undecided tile with correct tiles and weights
-- fn can_connect (con1: Connection, con2: Connection) // Returns true if two connections can connect to each other, used while collapsing tiles
+- `struct TileChoice {`
+  `  connections: [Connection; 4],` // up down left right
+  `  weight: i32,` // The weight of the tile in the collapse function
+    // other things the renderer might need, for example texture:TileTexture
+  `}`
+- enum Connection // Has one variant for each connection
+- fn can_connect (con1: Connection, con2: Connection) // Returns true if two connections can connect to each other, used while collapsing tiles. Order should not matter.
+- impl UndecidedTile {fn new()} // Generates a new blank undecided tile with correct tile options and weights
+- impl TileGrid {fn pick_index(&mut self) -> (i32, i32) /*x,y*/} //Picks the x and y index into the grid that should be collapsed next for best results.
