@@ -1,10 +1,16 @@
 use macroquad::prelude::*;
 use ::rand::seq::SliceRandom;
+
 mod renderers;
 use renderers::whitegrid::draw_tilegrid as draw_whitegrid;
 use renderers::triangles::draw_tilegrid as draw_tilegrid;
+
 mod wavefunctions;
 use wavefunctions::colored_wires::*;
+
+use std::cmp::max;
+use std::cmp::min;
+
 // use wavefunctions::colored_wires::*;              
 // use std::thread;
 // use std::ops::Index;
@@ -98,6 +104,8 @@ impl TileGrid {
     }
 
     fn expand_to (&mut self, width: i32, height: i32) {
+        let old_height = self.height;
+        let old_width = self.width;
         while self.height < height {
             for col in self.tilegrid.iter_mut() {
                 col.push(UndecidedTile::new());
@@ -122,7 +130,18 @@ impl TileGrid {
             }
             self.height = height;
         }
-        self.restrict_grid();
+        let mut to_propegate = Vec::<(i32, i32)>::new();
+        for i in 0..old_width {
+            for j in old_height..self.height {
+                to_propegate.push((i, j));
+            }
+        }
+        for i in old_width..self.width {
+            for j in 0..self.height {
+                to_propegate.push((i, j));
+            }
+        }
+        self.restrict_and_propegate(to_propegate);
     }
 
     fn shift (&mut self, x: i32, y: i32) {
@@ -142,7 +161,11 @@ impl TileGrid {
             new_tilegrid.push(col);
         }
         self.tilegrid = new_tilegrid;
-        self.restrict_grid();
+        let top = max(0, -y);
+        let bottom = min(self.height, self.height-y);
+        let left = max(0, -x);
+        let right = min(self.width, self.width-x);
+        self.restrict_grid_edges(top, bottom, left, right);
     }
 
     fn restrict_tile (&mut self, x: i32, y: i32) -> bool { // returns true if a change was made
@@ -195,6 +218,9 @@ impl TileGrid {
                 }
             }
         }
+        if did_something {
+            self.tilegrid[x as usize][y as usize] = tile;
+        }
         return did_something;
     }
 
@@ -246,6 +272,45 @@ impl TileGrid {
             }
         }
     }
+
+    fn restrict_grid_edges(&mut self, top:i32, bottom:i32, left:i32, right:i32) { // Restricts the edges of the grid
+        let mut todo_indices = Vec::<(i32, i32)>::new();
+        for i in 0..self.width {
+            for j in 0..bottom {
+                todo_indices.push((i, j));
+            }
+            for j in top..self.height {
+                todo_indices.push((i, j));
+            }
+        }
+        for j in bottom..top {
+            for i in 0..left {
+                todo_indices.push((i, j));
+            }
+            for i in right..self.width {
+                todo_indices.push((i, j));
+            }
+        }
+        let mut index = 0;
+        while index < todo_indices.len() {
+            let (x, y) = todo_indices[index];
+            index += 1;
+            if self.restrict_tile(x, y) {
+                for i in 0..4 {
+                    let neighbor_indices = match i {
+                        0 => (x,y-1),
+                        1 => (x,y+1),
+                        2 => (x-1,y),
+                        _ => (x+1,y),
+                    };
+                    if !todo_indices.contains(&neighbor_indices) {
+                        todo_indices.push(neighbor_indices);
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -256,7 +321,7 @@ enum Rendermode {
 }
 
 #[macroquad::main("WavefunctionCollapse")]
-async fn main() {
+async fn main() {                
     // texture loading 
 
     // for textureindex in 0..15 {
@@ -267,22 +332,17 @@ async fn main() {
     //     let result = thread.join();
     // }
 
-    let mut grid = TileGrid::new(30, 30, 20.0, 20.0, 20.0, 20.0);
+    let mut grid = TileGrid::new(3, 3, 20.0, 20.0, 20.0, 20.0);
     let mut autogenerate;
+    let mut whitegrid = false;
     let mut rendermode = Rendermode::Ribbon;
 
-    for _ in 0..grid.width {
-        let mut row = Vec::<UndecidedTile>::new();
-        for _ in 0..grid.height {
-            row.push(UndecidedTile::new());
-        }
-        grid.tilegrid.push(row);
-    }
-    grid.restrict_grid();
-
     loop {
-        clear_background(GREEN);
-        draw_whitegrid(&grid);
+        clear_background(BLACK);
+        if is_key_pressed(KeyCode::G) {whitegrid = !whitegrid;}
+        if whitegrid {
+            draw_whitegrid(&grid);
+        }
 
         if is_key_down(KeyCode::T) {rendermode = Rendermode::Texture;}
         if is_key_down(KeyCode::R) {rendermode = Rendermode::Ribbon;}
@@ -290,8 +350,8 @@ async fn main() {
 
         if is_key_pressed(KeyCode::Up) {grid.shift(0, 1);}
         if is_key_pressed(KeyCode::Down) {grid.shift(0, -1);}
-        if is_key_pressed(KeyCode::Left) {grid.shift(-1, 0);}
-        if is_key_pressed(KeyCode::Right) {grid.shift(1, 0);}
+        if is_key_pressed(KeyCode::Left) {grid.shift(1, 0);}
+        if is_key_pressed(KeyCode::Right) {grid.shift(-1, 0);}
         if is_key_pressed(KeyCode::W) {grid.expand_to(grid.width, grid.height-1);}
         if is_key_pressed(KeyCode::S) {grid.expand_to(grid.width, grid.height+1);}
         if is_key_pressed(KeyCode::A) {grid.expand_to(grid.width-1, grid.height);}

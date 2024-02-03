@@ -21,14 +21,7 @@ pub enum Connection {
 
 impl Connection {
     pub fn can_connect (con1: Connection, con2: Connection) -> bool {
-        match con1 {
-            Connection::Black => con2 == Connection::Black,
-            Connection::Red => con2 == Connection::Red || con2 == Connection::Yellow || con2 == Connection::White,
-            Connection::Green => con2 == Connection::Green || con2 == Connection::Yellow || con2 == Connection::White,
-            Connection::Blue => con2 == Connection::Blue || con2 == Connection::Yellow || con2 == Connection::White,
-            Connection::Yellow => con2 == Connection::Yellow || con2 == Connection::White,
-            Connection::White => con2 == Connection::White,
-        }
+        return con1 == con2;
     }
 }
 
@@ -55,48 +48,9 @@ impl UndecidedTile {
                     new_tile.connections[3] = connection.clone();
                     conns += 1;
                 } 
-                if conns != 2 && conns != 0 {
+                if conns != 1 {
                     continue;
                 }
-                if i == 0 {
-                    new_tile.weight = 100;
-                }
-                else if i == 12 || i == 3 {
-                    new_tile.weight = 10;
-                }
-                else {
-                    new_tile.weight = 2;
-                }
-                // Deterministic Colors
-                // let color = match connection {
-                //     Connection::Black => BLACK,
-                //     Connection::Red => RED,
-                //     Connection::Blue => BLUE,
-                //     Connection::Green => GREEN,
-                //     Connection::Yellow => YELLOW,
-                //     Connection::White => WHITE,
-                // };
-                // Random Colors
-                // let colors = vec![RED, BLUE, GREEN, YELLOW, WHITE];
-                // let color = colors.choose(&mut ::rand::thread_rng()).unwrap().clone();
-                // new_tile.color = color;
-                // if connection == &Connection::Red {
-                //     let mut path = "./assets/".to_string();
-                //     for i in 0..4 {
-                //         if new_tile.connections[i] == Connection::Black {
-                //             continue;
-                //         }
-                //         let char = match i {
-                //             0 => "U",
-                //             1 => "D",
-                //             2 => "L",
-                //             _ => "R",
-                //         };
-                //         path = path + char;
-                //     }
-                //     path = path + ".png";
-                //     new_tile.texture = Some(load_texture(&path).await.unwrap());
-                // }
                 possible_tiles.push(new_tile);
             }
         }
@@ -124,8 +78,11 @@ impl TileGrid {
         let mut least_seen = 100000;
         let mut weights = Vec::<i32>::new();
         let mut total_seen = 0;
-        const LARGE_WEIGHT: i32 = 1;
-        const SMALL_WEIGHT: i32 = 3;
+        const RESTRICTED_WEIGHT: i32 = 1; //when this is high, it will prioritize tiles with the least options
+        const FREE_WEIGHT: i32 = 3; //when this is high, it will prioritize tiles that don't have the least options
+        // restricted_weight is good for when the ruleset is restrictive (such as "all tiles must have precisely 2 connections"), and for making large blocks
+        // free_weight is good for when you want smaller, more scattered blocks
+        // triangle renderer is recommended to see the difference
         for i in 0..self.width {
             for j in 0..self.height {
                 let tile = &self.tilegrid[i as usize][j as usize];
@@ -135,14 +92,14 @@ impl TileGrid {
                 total_seen += 1;
                 if tile.possible_tiles.len() < least_seen {
                     least_seen = tile.possible_tiles.len();
-                    weights = vec![SMALL_WEIGHT;total_seen-1];
-                    weights.push(LARGE_WEIGHT);
+                    weights = vec![FREE_WEIGHT;total_seen-1];
+                    weights.push(RESTRICTED_WEIGHT);
                 }
                 else if tile.possible_tiles.len() == least_seen {
-                    weights.push(LARGE_WEIGHT);
+                    weights.push(RESTRICTED_WEIGHT);
                 }
                 else {
-                    weights.push(SMALL_WEIGHT);
+                    weights.push(FREE_WEIGHT);
                 }
                 candidate_indices.push((i, j));
             }
