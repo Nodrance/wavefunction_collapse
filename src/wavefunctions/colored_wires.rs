@@ -47,9 +47,16 @@ impl UndecidedTile {
                 if i & 8 == 8 {
                     new_tile.connections[3] = connection.clone();
                     conns += 1;
-                } 
-                if conns != 1 {
-                    continue;
+                }
+                if conns == 0 {
+                    new_tile.weight = 1;
+                }
+                else
+                if conns == 2 {
+                    new_tile.weight = 1000;
+                }
+                else {
+                    new_tile.weight = 10;
                 }
                 possible_tiles.push(new_tile);
             }
