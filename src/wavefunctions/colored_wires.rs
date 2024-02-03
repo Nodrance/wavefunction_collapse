@@ -2,6 +2,7 @@ use crate::UndecidedTile;
 use crate::TileGrid;
 use ::rand::distributions::WeightedIndex;
 use ::rand::prelude::*;
+use std::cmp::Ordering;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct TileChoice {
@@ -33,26 +34,25 @@ impl UndecidedTile {
                 let mut new_tile = TileChoice {connections: [Connection::Black; 4], weight: 1};
                 let mut conns = 0;
                 if i & 1 == 1 {
-                    new_tile.connections[0] = connection.clone();
+                    new_tile.connections[0] = *connection;
                     conns += 1;
                 }
                 if i & 2 == 2 {
-                    new_tile.connections[1] = connection.clone();
+                    new_tile.connections[1] = *connection;
                     conns += 1;
                 }
                 if i & 4 == 4 {
-                    new_tile.connections[2] = connection.clone();
+                    new_tile.connections[2] = *connection;
                     conns += 1;
                 }
                 if i & 8 == 8 {
-                    new_tile.connections[3] = connection.clone();
+                    new_tile.connections[3] = *connection;
                     conns += 1;
                 }
                 if conns == 0 {
                     new_tile.weight = 1;
                 }
-                else
-                if conns == 2 {
+                else if conns == 2 {
                     new_tile.weight = 1000;
                 }
                 else {
@@ -62,7 +62,7 @@ impl UndecidedTile {
             }
         }
         Self {
-            possible_tiles: possible_tiles,
+            possible_tiles,
         }
     }
     pub fn collapse (&mut self) {
@@ -74,7 +74,7 @@ impl UndecidedTile {
             weights.push(self_option.weight);
         }
         let dist = WeightedIndex::new(&weights).unwrap();
-        let self_option = self.possible_tiles[dist.sample(&mut ::rand::thread_rng())].clone();
+        let self_option = self.possible_tiles[dist.sample(&mut ::rand::thread_rng())];
         self.possible_tiles = vec![self_option];
     }
 }
@@ -97,22 +97,36 @@ impl TileGrid {
                     continue;
                 }
                 total_seen += 1;
-                if tile.possible_tiles.len() < least_seen {
-                    least_seen = tile.possible_tiles.len();
-                    weights = vec![FREE_WEIGHT;total_seen-1];
-                    weights.push(RESTRICTED_WEIGHT);
-                }
-                else if tile.possible_tiles.len() == least_seen {
-                    weights.push(RESTRICTED_WEIGHT);
-                }
-                else {
-                    weights.push(FREE_WEIGHT);
+
+                // if tile.possible_tiles.len() < least_seen {
+                //     least_seen = tile.possible_tiles.len();
+                //     weights = vec![FREE_WEIGHT;total_seen-1];
+                //     weights.push(RESTRICTED_WEIGHT);
+                // }
+                // else if tile.possible_tiles.len() == least_seen {
+                //     weights.push(RESTRICTED_WEIGHT);
+                // }
+                // else {
+                //     weights.push(FREE_WEIGHT);
+                // }
+                match tile.possible_tiles.len().cmp(&least_seen) {
+                    Ordering::Less => {
+                        least_seen = tile.possible_tiles.len();
+                        weights = vec![FREE_WEIGHT;total_seen-1];
+                        weights.push(RESTRICTED_WEIGHT);
+                    }
+                    Ordering::Equal => {
+                        weights.push(RESTRICTED_WEIGHT);
+                    },
+                    Ordering::Greater => {
+                        weights.push(FREE_WEIGHT);
+                    },
                 }
                 candidate_indices.push((i, j));
             }
         }
 
-        if candidate_indices.len() == 0 {
+        if candidate_indices.is_empty() {
             return None;
         }
         else {

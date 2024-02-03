@@ -1,3 +1,5 @@
+#![allow(clippy::needless_return)]
+
 use macroquad::prelude::*;
 use ::rand::seq::SliceRandom;
 
@@ -91,13 +93,13 @@ impl TileGrid {
             tilegrid.push(row);
         }
         let mut output = Self {
-            tilegrid: tilegrid,
-            width: width,
-            height: height,
-            tilewidth: tilewidth,
-            tileheight: tileheight,
-            marginx: marginx,
-            marginy: marginy,
+            tilegrid,
+            width,
+            height,
+            tilewidth,
+            tileheight,
+            marginx,
+            marginy,
         };
         output.restrict_grid();
         return output;
@@ -202,8 +204,7 @@ impl TileGrid {
 
             for tile_option_index in (0..tile.possible_tiles.len()).rev() {
                 let self_connection = 
-                    tile.possible_tiles[tile_option_index]
-                    .clone().connections[connection_direction];
+                    tile.possible_tiles[tile_option_index].connections[connection_direction];
 
                 let mut can_connect = false;
                 for connection in possible_connections.iter() {
