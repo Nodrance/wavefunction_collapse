@@ -2,8 +2,10 @@ use macroquad::prelude::*;
 use ::rand::seq::SliceRandom;
 use ::rand::distributions::WeightedIndex;
 use ::rand::prelude::*;
-mod render;
-use crate::render::draw_tilegrid;
+mod renderers;
+use renderers::wire::*;
+mod wavefunctions;
+use wavefunctions::colored_wires::*;
 // use std::thread;
 // use std::ops::Index;
 
@@ -369,7 +371,7 @@ async fn main() {
 
     loop {
         clear_background(GREEN);
-        draw_tilegrid(&grid, rendermode);
+        draw_tilegrid(&grid);
         if is_key_down(KeyCode::Space) {
             autogenerate = true;
         }

@@ -1,6 +1,4 @@
-use crate::*;
-
-pub fn draw_tilegrid (grid: &TileGrid, rendermode: Rendermode) {
+fn draw_tilegrid (grid: &TileGrid, rendermode: Rendermode) {
     for i in 0..grid.width {
         for j in 0..grid.height {
             let tile = &grid.tilegrid[i as usize][j as usize];
@@ -14,7 +12,7 @@ pub fn draw_tilegrid (grid: &TileGrid, rendermode: Rendermode) {
                 let color = tileopt.color;
 
                 let tx = (i as f32) * grid.tilewidth + grid.marginx;
-                let ty = (j as f32) * grid.tileheight + grid.marginy;
+                let ty: f32 = (j as f32) * grid.tileheight + grid.marginy;
                 if rendermode == Rendermode::Texture && tileopt.texture.is_some() {
                     let texture = tileopt.texture.as_ref().unwrap();
                     draw_texture_ex(texture, tx, ty, color, DrawTextureParams {
