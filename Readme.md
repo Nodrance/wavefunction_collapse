@@ -26,3 +26,7 @@ and a wavefunction which should define
 - right click to uncollapse a tile, fails if there are decided tiles locking it in
 - 1234567890 to pick option 1-10 from the tile your mouse is over (internal order, no easy way to tell other than trial and error)
 - - Hold Lshift to add 10, Lalt for 20, Lcontrol for 40,  
+
+todo: make beach into generic renderer
+add indicators for shift, alt, ctrl
+
