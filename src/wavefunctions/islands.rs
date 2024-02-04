@@ -13,75 +13,71 @@ pub struct TileChoice {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Connection {
-    Black,
-    Red,
-    Green,
-    Blue,
-    Yellow,
-    White,
+    Land,
+    Water,
+    BeachCW,
+    BeachCCW,
 }
 
 impl Connection {
     pub fn can_connect (con1: Connection, con2: Connection) -> bool {
-        return con1 == con2;
+        if con1 == Connection::Land || con1 == Connection::Water {
+            return con1 == con2;
+        }
+        else if con1 == Connection::BeachCW {
+            return con2 == Connection::BeachCCW
+        }
+        else if con1 == Connection::BeachCCW {
+            return con2 == Connection::BeachCW
+        }
+        else {
+            return false;
+        }
     }
 }
 
 impl UndecidedTile {
     pub fn new() -> Self {
         let mut possible_tiles = Vec::<TileChoice>::new();
-        for connection in [Connection::Red, Connection::Blue, Connection::Green, Connection::Yellow, Connection::White].iter() {
-            for i in 0..16 {
-                let mut new_tile = TileChoice {connections: [Connection::Black; 4], weight: 1};
-                let mut conns = 0;
-                if i & 1 == 1 {
-                    new_tile.connections[0] = *connection;
-                    conns += 1;
-                }
-                if i & 2 == 2 {
-                    new_tile.connections[1] = *connection;
-                    conns += 1;
-                }
-                if i & 4 == 4 {
-                    new_tile.connections[2] = *connection;
-                    conns += 1;
-                }
-                if i & 8 == 8 {
-                    new_tile.connections[3] = *connection;
-                    conns += 1;
-                }
-                if conns != 2 && conns != 4 {
-                    continue;
-                }
-                new_tile.weight = 10000;
-                possible_tiles.push(new_tile);
-            }
-        }
-            for con1 in [Connection::Red, Connection::Blue, Connection::Green, Connection::Yellow, Connection::White].iter() {
-                for con2 in [Connection::Red, Connection::Blue, Connection::Green, Connection::Yellow, Connection::White].iter() {
-                    if con1 == con2 {
-                        continue;
-                    }
-                    let mut new_tile = TileChoice {connections: [Connection::Black; 4], weight: 1};
-                    new_tile.connections[0] = *con1;
-                    new_tile.connections[1] = *con1;
-                    new_tile.connections[2] = *con2;
-                    new_tile.connections[3] = *con2;
-                    possible_tiles.push(new_tile);
-                    let mut new_tile = TileChoice {connections: [Connection::Black; 4], weight: 1};
-                    new_tile.connections[0] = *con1;
-                    new_tile.connections[1] = *con2;
-                    new_tile.connections[2] = *con2;
-                    new_tile.connections[3] = *con1;
-                    possible_tiles.push(new_tile);
-                    let mut new_tile = TileChoice {connections: [Connection::Black; 4], weight: 1};
-                    new_tile.connections[0] = *con1;
-                    new_tile.connections[1] = *con2;
-                    new_tile.connections[2] = *con1;
-                    new_tile.connections[3] = *con2;
-                    possible_tiles.push(new_tile);
-                }
-            }
+
+        use Connection as c;
+
+        // Straight Beaches
+        let mut cons = [c::Land, c::Water, c::BeachCW, c::BeachCCW];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        cons = [c::BeachCW, c::BeachCCW, c::Water, c::Land];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        cons = [c::BeachCCW, c::BeachCW, c::Land, c::Water];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        cons = [c::Water, c::Land, c::BeachCCW, c::BeachCW];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+
+        // Watery Corners
+        cons = [c::Water, c::BeachCCW, c::Water, c::BeachCW];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        cons = [c::BeachCCW, c::Water, c::BeachCW, c::Water];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        cons = [c::Water, c::BeachCW, c::BeachCCW, c::Water];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        cons = [c::BeachCW, c::Water, c::Water, c::BeachCCW];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+
+        // Land Corners
+        cons = [c::Land, c::BeachCW, c::Land, c::BeachCCW];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        cons = [c::BeachCW, c::Land, c::BeachCCW, c::Land];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        cons = [c::Land, c::BeachCCW, c::BeachCW, c::Land];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        cons = [c::BeachCCW, c::Land, c::Land, c::BeachCW];
+        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+
+        // Land and Water
+        cons = [c::Land, c::Land, c::Land, c::Land];
+        possible_tiles.push(TileChoice {connections: cons, weight: 100});
+        cons = [c::Water, c::Water, c::Water, c::Water];
+        possible_tiles.push(TileChoice {connections: cons, weight: 100});
+
         Self {
             possible_tiles,
         }
@@ -107,7 +103,7 @@ impl TileGrid {
         let mut weights = Vec::<i32>::new();
         let mut total_seen = 0;
         const RESTRICTED_WEIGHT: i32 = 1; //when this is high, it will prioritize tiles with the least options. Cannot be 0
-        const FREE_WEIGHT: i32 = 000000; //when this is high, it will prioritize tiles that don't have the least options
+        const FREE_WEIGHT: i32 = 1000000; //when this is high, it will prioritize tiles that don't have the least options
         // restricted_weight is good for when the ruleset is restrictive (such as "all tiles must have precisely 2 connections"), and for making large blocks
         // free_weight is good for when you want smaller, more scattered blocks
         // triangle renderer is recommended to see the difference

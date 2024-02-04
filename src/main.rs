@@ -5,10 +5,10 @@ use ::rand::seq::SliceRandom;
 
 mod renderers;
 use renderers::whitegrid::draw_tilegrid as draw_whitegrid;
-use renderers::triangles::draw_tilegrid as draw_tilegrid;
+use renderers::debug_grid_draw::draw_tilegrid as debug_draw_tilegrid;
 
 mod wavefunctions;
-use wavefunctions::colored_wires::*;
+use wavefunctions::islands::*;
 
 use std::cmp::max;
 use std::cmp::min;
@@ -85,12 +85,12 @@ struct TileGrid {
 impl TileGrid {
     fn new (width: i32, height: i32, tilewidth: f32, tileheight: f32, marginx: f32, marginy: f32) -> Self {
         let mut tilegrid = Vec::<Vec<UndecidedTile>>::new();
-        for _ in 0..height {
-            let mut row = Vec::<UndecidedTile>::new();
-            for _ in 0..width {
-                row.push(UndecidedTile::new());
+        for _ in 0..width {
+            let mut col = Vec::<UndecidedTile>::new();
+            for _ in 0..height {
+                col.push(UndecidedTile::new());
             }
-            tilegrid.push(row);
+            tilegrid.push(col);
         }
         let mut output = Self {
             tilegrid,
@@ -214,7 +214,7 @@ impl TileGrid {
                 }
                 if !can_connect {
                     tile.possible_tiles.remove(tile_option_index);
-                    assert!(tile.possible_tiles.len() > 0, "No possible tiles left at ({}, {}), Rules are likely too restrictive. Please try again.", x, y);
+                    assert!(!tile.possible_tiles.is_empty(), "No possible tiles left at ({}, {}), Rules are likely too restrictive. Please try again.", x, y);
                     did_something = true;
                 }
             }
@@ -227,10 +227,7 @@ impl TileGrid {
 
     fn restrict_and_propegate (&mut self, vec: Vec<(i32, i32)>) { // Will restrict all tile indexes in the vec and propegate changes
         let mut todo_indices = vec.clone();
-        let mut index = 0;
-        while index < todo_indices.len() {
-            let (x, y) = todo_indices[index];
-            index += 1;
+        while let Some((x, y)) = todo_indices.pop() {
             if self.restrict_tile(x, y) {
                 for i in 0..4 {
                     let neighbor_indices = match i {
@@ -253,25 +250,8 @@ impl TileGrid {
             for j in 0..self.height {
                 todo_indices.push((i, j));
             }
-        }
-        let mut index = 0;
-        while index < todo_indices.len() {
-            let (x, y) = todo_indices[index];
-            index += 1;
-            if self.restrict_tile(x, y) {
-                for i in 0..4 {
-                    let neighbor_indices = match i {
-                        0 => (x,y-1),
-                        1 => (x,y+1),
-                        2 => (x-1,y),
-                        _ => (x+1,y),
-                    };
-                    if !todo_indices.contains(&neighbor_indices) {
-                        todo_indices.push(neighbor_indices);
-                    }
-                }
-            }
-        }
+        }    
+        self.restrict_and_propegate(todo_indices);
     }
 
     fn restrict_grid_edges(&mut self, top:i32, bottom:i32, left:i32, right:i32) { // Restricts the edges of the grid
@@ -292,62 +272,47 @@ impl TileGrid {
                 todo_indices.push((i, j));
             }
         }
-        let mut index = 0;
-        while index < todo_indices.len() {
-            let (x, y) = todo_indices[index];
-            index += 1;
-            if self.restrict_tile(x, y) {
-                for i in 0..4 {
-                    let neighbor_indices = match i {
-                        0 => (x,y-1),
-                        1 => (x,y+1),
-                        2 => (x-1,y),
-                        _ => (x+1,y),
-                    };
-                    if !todo_indices.contains(&neighbor_indices) {
-                        todo_indices.push(neighbor_indices);
-                    }
-                }
-            }
-        }
+        self.restrict_and_propegate(todo_indices);
     }
 
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Rendermode {
-    Texture,
-    Ribbon,
+    Wire,
     Triangle,
+    Texture,
+    Debug,
 }
 
 #[macroquad::main("WavefunctionCollapse")]
 async fn main() {                
-    // texture loading 
 
-    // for textureindex in 0..15 {
-    //     let thread = thread::spawn(|| async {
-    //         let texturepath = 
-    //         let texture = load_texture(texture.path()).await.unwrap();
-    //     });
-    //     let result = thread.join();
-    // }
-
-    let mut grid = TileGrid::new(3, 3, 20.0, 20.0, 20.0, 20.0);
+    let mut grid = TileGrid::new(30, 15, 20.0, 20.0, 20.0, 20.0);
     let mut autogenerate;
     let mut whitegrid = false;
-    let mut rendermode = Rendermode::Ribbon;
+    let mut rendermode = Rendermode::Wire;
 
     loop {
         clear_background(BLACK);
+
+        if is_key_down(KeyCode::R) {rendermode = Rendermode::Wire;}
+        if is_key_down(KeyCode::T) {rendermode = Rendermode::Triangle;}
+        if is_key_down(KeyCode::Y) {rendermode = Rendermode::Texture;}
+        if is_key_down(KeyCode::U) {rendermode = Rendermode::Debug;}
+
+        // match rendermode {
+        //     Rendermode::Wire => draw_wiregrid(&grid),
+        //     Rendermode::Triangle => draw_trianglegrid(&grid),
+        //     Rendermode::Texture => {},
+        //     Rendermode::Debug => debug_draw_tilegrid(&grid),
+        // }
+        debug_draw_tilegrid(&grid);
+
         if is_key_pressed(KeyCode::G) {whitegrid = !whitegrid;}
         if whitegrid {
             draw_whitegrid(&grid);
         }
-
-        if is_key_down(KeyCode::T) {rendermode = Rendermode::Texture;}
-        if is_key_down(KeyCode::R) {rendermode = Rendermode::Ribbon;}
-        if is_key_down(KeyCode::Y) {rendermode = Rendermode::Triangle;}
 
         if is_key_pressed(KeyCode::Up) {grid.shift(0, 1);}
         if is_key_pressed(KeyCode::Down) {grid.shift(0, -1);}
@@ -357,12 +322,6 @@ async fn main() {
         if is_key_pressed(KeyCode::S) {grid.expand_to(grid.width, grid.height+1);}
         if is_key_pressed(KeyCode::A) {grid.expand_to(grid.width-1, grid.height);}
         if is_key_pressed(KeyCode::D) {grid.expand_to(grid.width+1, grid.height);}
-
-        match rendermode {
-            Rendermode::Texture => draw_tilegrid(&grid),
-            Rendermode::Ribbon => renderers::wires::draw_tilegrid(&grid),
-            Rendermode::Triangle => renderers::triangles::draw_tilegrid(&grid),
-        }
 
         autogenerate = is_key_down(KeyCode::Space);
 
