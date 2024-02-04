@@ -6,65 +6,14 @@ use ::rand::seq::SliceRandom;
 mod renderers;
 use renderers::whitegrid::draw_tilegrid as draw_whitegrid;
 use renderers::debug_grid_draw::draw_tilegrid as debug_draw_tilegrid;
+use renderers::beach::load_textures_paths;
+use renderers::beach::draw_tilegrid;
 
 mod wavefunctions;
 use wavefunctions::islands::*;
 
 use std::cmp::max;
 use std::cmp::min;
-
-// use wavefunctions::colored_wires::*;              
-// use std::thread;
-// use std::ops::Index;
-
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// #[repr(u32)]
-// enum TextureId {
-//     U = 0,
-//     D = 1,
-//     UD = 2,
-//     L = 3,
-//     UL = 4,
-//     DL = 5,
-//     UDL = 6,
-//     R = 7,
-//     UR = 8,
-//     DR = 9,
-//     UDR = 10,
-//     LR = 11,
-//     ULR = 12,
-//     DLR = 13,
-//     UDLR = 14,
-// }
-// impl TextureId {
-//     fn path(&self) -> &'static str {
-//         match self {
-//             Self::U => "assets/U.png",
-//             Self::D => "assets/D.png",
-//             Self::UD => "assets/UD.png",
-//             Self::L => "assets/L.png",
-//             Self::UL => "assets/UL.png",
-//             Self::DL => "assets/DL.png",
-//             Self::UDL => "assets/UDL.png",
-//             Self::R => "assets/R.png",
-//             Self::UR => "assets/UR.png",
-//             Self::DR => "assets/DR.png",
-//             Self::UDR => "assets/UDR.png",
-//             Self::LR => "assets/LR.png",
-//             Self::ULR => "assets/ULR.png",
-//             Self::DLR => "assets/DLR.png",
-//             Self::UDLR => "assets/UDLR.png",
-//         }
-//     }
-// }
-// struct TextureFiles(Vec<Texture2D>);
-
-// impl Index<TextureId> for TextureFiles {
-//     type Output = Texture2D;
-//     fn index(&self, item: TextureId) -> &Self::Output {
-//         &self.0[item as usize]
-//     }
-// }
 
 #[derive(Clone, PartialEq, Debug)]
 struct UndecidedTile {
@@ -292,6 +241,10 @@ async fn main() {
     let mut autogenerate;
     let mut whitegrid = false;
     let mut rendermode = Rendermode::Wire;
+    let texturemap = load_textures_paths(
+        &["assets/islands/beach.png", "assets/islands/beach_water_corner.png", "assets/islands/beach_land_corner.png", "assets/islands/land.png", "assets/islands/water.png"], 
+        &["beach", "beach_water_corner", "beach_land_corner", "land", "water"]
+    ).await;
 
     loop {
         clear_background(BLACK);
@@ -301,13 +254,12 @@ async fn main() {
         if is_key_down(KeyCode::Y) {rendermode = Rendermode::Texture;}
         if is_key_down(KeyCode::U) {rendermode = Rendermode::Debug;}
 
-        // match rendermode {
-        //     Rendermode::Wire => draw_wiregrid(&grid),
-        //     Rendermode::Triangle => draw_trianglegrid(&grid),
-        //     Rendermode::Texture => {},
-        //     Rendermode::Debug => debug_draw_tilegrid(&grid),
-        // }
-        debug_draw_tilegrid(&grid);
+        match rendermode {
+            // Rendermode::Wire => draw_wiregrid(&grid),
+            // Rendermode::Triangle => draw_trianglegrid(&grid),
+            Rendermode::Texture => draw_tilegrid(&grid, &texturemap),
+            _ => debug_draw_tilegrid(&grid),
+        }
 
         if is_key_pressed(KeyCode::G) {whitegrid = !whitegrid;}
         if whitegrid {
@@ -353,22 +305,3 @@ async fn main() {
         next_frame().await;
     }
 }
-
-// use std::thread;
-// fn mainx(){
-//     let mut worked = 0;
-//     for _ in 0..1000 {
-//         let thread = thread::spawn(|| {
-//             main();
-//         });
-//         let result = thread.join();
-//         if result.is_ok() {
-//             worked += 1;
-//         }
-//     }
-//     println!("Worked: {}", worked);
-// }
-
-
-
-

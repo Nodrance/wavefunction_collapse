@@ -9,6 +9,10 @@ use std::hash::Hash;
 pub struct TileChoice {
     pub connections: [Connection; 4], // up down left right
     pub weight: i32,
+    pub texture: &'static str,
+    pub flipx: bool,
+    pub flipy: bool,
+    pub rot90: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
@@ -41,42 +45,48 @@ impl UndecidedTile {
         let mut possible_tiles = Vec::<TileChoice>::new();
 
         use Connection as c;
+        const BEACH_WEIGHT: i32 = 10;
+        const BEACH_WATER_WEIGHT: i32 = 1;
+        const BEACH_LAND_WEIGHT: i32 = 1;
+        const LAND_WEIGHT: i32 = 50;
+        const WATER_WEIGHT: i32 = 1;
 
         // Straight Beaches
         let mut cons = [c::Land, c::Water, c::BeachCW, c::BeachCCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WEIGHT, texture: "beach", flipx: false, flipy: false, rot90: false});
         cons = [c::BeachCW, c::BeachCCW, c::Water, c::Land];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
-        cons = [c::BeachCCW, c::BeachCW, c::Land, c::Water];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WEIGHT, texture: "beach", flipx: false, flipy: false, rot90: true});
         cons = [c::Water, c::Land, c::BeachCCW, c::BeachCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WEIGHT, texture: "beach", flipx: true, flipy: true, rot90: false});
+        cons = [c::BeachCCW, c::BeachCW, c::Land, c::Water];
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WEIGHT, texture: "beach", flipx: true, flipy: true, rot90: true});
 
         // Watery Corners
-        cons = [c::Water, c::BeachCCW, c::Water, c::BeachCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
         cons = [c::BeachCCW, c::Water, c::BeachCW, c::Water];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
-        cons = [c::Water, c::BeachCW, c::BeachCCW, c::Water];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: false, flipy: false, rot90: false});
         cons = [c::BeachCW, c::Water, c::Water, c::BeachCCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: false, flipy: false, rot90: true});
+        cons = [c::Water, c::BeachCCW, c::Water, c::BeachCW];
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: true, flipy: true, rot90: false});
+        cons = [c::Water, c::BeachCW, c::BeachCCW, c::Water];
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: true, flipy: true, rot90: true});
 
         // Land Corners
-        cons = [c::Land, c::BeachCW, c::Land, c::BeachCCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
-        cons = [c::BeachCW, c::Land, c::BeachCCW, c::Land];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        
         cons = [c::Land, c::BeachCCW, c::BeachCW, c::Land];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: false, flipy: false, rot90: false});
+        cons = [c::BeachCW, c::Land, c::BeachCCW, c::Land];
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: false, flipy: false, rot90: true});
         cons = [c::BeachCCW, c::Land, c::Land, c::BeachCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: 1});
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: true, flipy: true, rot90: false});
+        cons = [c::Land, c::BeachCW, c::Land, c::BeachCCW];
+        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: true, flipy: true, rot90: true});
 
         // Land and Water
         cons = [c::Land, c::Land, c::Land, c::Land];
-        possible_tiles.push(TileChoice {connections: cons, weight: 100});
+        possible_tiles.push(TileChoice {connections: cons, weight: LAND_WEIGHT, texture: "land", flipx: false, flipy: false, rot90: false});
         cons = [c::Water, c::Water, c::Water, c::Water];
-        possible_tiles.push(TileChoice {connections: cons, weight: 100});
+        possible_tiles.push(TileChoice {connections: cons, weight: WATER_WEIGHT, texture: "water", flipx: false, flipy: false, rot90: false});
 
         Self {
             possible_tiles,
