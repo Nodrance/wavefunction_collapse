@@ -48,8 +48,8 @@ impl UndecidedTile {
         const BEACH_WEIGHT: i32 = 10;
         const BEACH_WATER_WEIGHT: i32 = 1;
         const BEACH_LAND_WEIGHT: i32 = 1;
-        const LAND_WEIGHT: i32 = 50;
-        const WATER_WEIGHT: i32 = 1;
+        const LAND_WEIGHT: i32 = 30;
+        const WATER_WEIGHT: i32 = 50;
 
         // Straight Beaches
         let mut cons = [c::Land, c::Water, c::BeachCW, c::BeachCCW];
@@ -113,7 +113,7 @@ impl TileGrid {
         let mut weights = Vec::<i32>::new();
         let mut total_seen = 0;
         const RESTRICTED_WEIGHT: i32 = 1; //when this is high, it will prioritize tiles with the least options. Cannot be 0
-        const FREE_WEIGHT: i32 = 1000000; //when this is high, it will prioritize tiles that don't have the least options
+        const FREE_WEIGHT: i32 = 1000; //when this is high, it will prioritize tiles that don't have the least options
         // restricted_weight is good for when the ruleset is restrictive (such as "all tiles must have precisely 2 connections"), and for making large blocks
         // free_weight is good for when you want smaller, more scattered blocks
         // triangle renderer is recommended to see the difference

@@ -61,14 +61,21 @@ pub async fn load_textures_stringable<T: Hash + Eq + Clone + ToString>(folder: &
     return hashmap;
 }
 
-pub fn draw_tilegrid (grid: &TileGrid, textures: &HashMap<&str, Texture2D>) {
+pub fn draw_tilegrid (grid: &TileGrid, textures: &HashMap<&str, Texture2D>, offset:i32, x_size:f32, y_size: f32) {
     for i in 0..grid.width {
         for j in 0..grid.height {
+            // if (i*3 + j)%10 != offset%10 {
+            //     continue;
+            // }
             let tile = &grid.tilegrid[i as usize][j as usize];
-            let tileopt = tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap();
-            let tx = (i as f32) * grid.tilewidth + grid.marginx;
-            let ty = (j as f32) * grid.tileheight + grid.marginy;
-            draw_tile_opt(tx, ty, grid.tilewidth, grid.tileheight, tileopt, textures);
+            let tileopt = if tile.possible_tiles.len() == 1 {&tile.possible_tiles[0]}
+            else {tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap()};
+            // let tileopt = &tile.possible_tiles[rand as usize % tile.possible_tiles.len()];
+            // let tileopt = &tile.possible_tiles[0];
+            let tx = (i as f32) * x_size;
+            let ty = (j as f32) * y_size;
+            // draw_tile_opt(tx, ty, x_size, y_size, tileopt, textures);
+            draw_tile_opt(0.0,0.0,100.0,100.0, tileopt, textures);
         }
     }
 }
@@ -85,5 +92,5 @@ pub fn draw_tile_opt (x: f32, y: f32, width: f32, height: f32, tileopt: &TileCho
         flip_x: tileopt.flipx,
         flip_y: tileopt.flipy,
         ..Default::default()};
-    draw_texture_ex(texture, x, y, WHITE, params);
+    draw_texture_ex(texture, 0.0,0.0, WHITE, params);
 }

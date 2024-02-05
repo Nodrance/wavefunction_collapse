@@ -58,6 +58,9 @@ impl TileGrid {
     fn expand_to (&mut self, width: i32, height: i32) {
         let old_height = self.height;
         let old_width = self.width;
+        if width < 1 || height < 1 {
+            return;
+        }
         while self.height < height {
             for col in self.tilegrid.iter_mut() {
                 col.push(UndecidedTile::new());
@@ -250,31 +253,27 @@ enum Rendermode {
     Texture,
     Debug,
 }
-
 #[macroquad::main("WavefunctionCollapse")]
 async fn main() {                
 
-    let mut grid = TileGrid::new(30, 15, 20.0, 20.0, 20.0, 20.0);
+    let mut framecount = 0;
+    let mut grid = TileGrid::new(5, 5, 20.0, 20.0, 0.0, 0.0);
     let mut whitegrid = false;
     let mut rendermode = Rendermode::Texture;
     let texturemap = load_textures_paths(
         &["assets/islands/beach.png", "assets/islands/beach_water_corner.png", "assets/islands/beach_land_corner.png", "assets/islands/land.png", "assets/islands/water.png"], 
         &["beach", "beach_water_corner", "beach_land_corner", "land", "water"]
     ).await;
+    let mut tilegrid_texture = render_target(1, 1);
+    let mut old_lod_x = 0;
+    let mut old_lod_y = 0;
 
     loop {
-        clear_background(BLACK);
-        if is_key_down(KeyCode::I) {rendermode = Rendermode::Texture;}
-        if is_key_down(KeyCode::O) {rendermode = Rendermode::Debug;}
 
-        match rendermode {
-            Rendermode::Texture => draw_tilegrid(&grid, &texturemap),
-            _ => debug_draw_tilegrid(&grid),
-        }
-
-        if is_key_pressed(KeyCode::P) {whitegrid = !whitegrid;}
-        if whitegrid {
-            draw_whitegrid(&grid);
+        // Zoom
+        {
+            if is_key_down(KeyCode::Equal) {grid.tilewidth *= 1.01; grid.tileheight *= 1.01; grid.marginx *= 1.01; grid.marginy *= 1.01;}
+            if is_key_down(KeyCode::Minus) {grid.tilewidth *= 0.99; grid.tileheight *= 0.99; grid.marginx *= 0.99; grid.marginy *= 0.99;}
         }
 
         // Movement
@@ -333,7 +332,7 @@ async fn main() {
         
         //Auto collapsing
         if is_key_down(KeyCode::Space) {
-            for _ in 0..1 {// warp factor
+            for _ in 0..100 {// warp factor
                 let x;
                 let y;
                 let indices = TileGrid::pick_index(&mut grid);
@@ -350,6 +349,79 @@ async fn main() {
             grid.tilegrid[mouse_x as usize][mouse_y as usize] = UndecidedTile::new();
             grid.unrestrict_grid();
         }
+
+        //Render
+        if is_key_down(KeyCode::I) {rendermode = Rendermode::Texture;}
+        if is_key_down(KeyCode::O) {rendermode = Rendermode::Debug;}
+
+        /*
+        There are screenwidth/tilewidth * screenheight/tileheight tiles on the screen
+        Each tile needs at least screenwidth/gridwidth pixels of width and screenheight/gridheight pixels of height
+        The texture needs to be screenwidth/gridwidth * screenwidth/tilewidth pixels of width and screenheight/gridheight * screenheight/tileheight pixels of height
+        */
+        let tile_pixels_x = screen_width()/(grid.width as f32);
+        let tile_pixels_y = screen_height()/(grid.height as f32);
+        let lod_x = tile_pixels_x.log2() as i32;
+        let lod_y = tile_pixels_y.log2() as i32;
+        if lod_x != old_lod_x || lod_y != old_lod_y {
+            let old_tilegrid_texture = tilegrid_texture.clone();
+            tilegrid_texture = render_target((2^lod_x) as u32, (2^lod_y) as u32);
+            tilegrid_texture.texture.set_filter(FilterMode::Nearest);
+            set_camera(&Camera2D {
+                zoom: vec2(1.0, 1.0),
+                target: vec2(0.0, 0.0),
+                render_target: Some(tilegrid_texture.clone()),
+                ..Default::default()
+            });
+            draw_texture_ex(
+                &old_tilegrid_texture.texture,
+                0.0,
+                0.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2((2^old_lod_x) as f32, (2^old_lod_y) as f32)),
+                    ..Default::default()
+                },
+            );
+            old_lod_x = lod_x;
+            old_lod_y = lod_y;
+        }
+        
+
+
+
+
+        set_camera(&Camera2D {
+            zoom: vec2(1.0, 1.0),
+            target: vec2(0.0, 0.0),
+            render_target: Some(tilegrid_texture.clone()),
+            ..Default::default()
+        });
+        // All rendering code
+        framecount += 1;
+        match rendermode {
+            Rendermode::Texture => draw_tilegrid(&grid, &texturemap, framecount, (2^lod_x) as f32, (2^lod_y) as f32),
+            _ => debug_draw_tilegrid(&grid),
+        }
+
+        //Grid
+        if is_key_pressed(KeyCode::P) {whitegrid = !whitegrid;}
+        if whitegrid {
+            draw_whitegrid(&grid);
+        }
+
+        set_default_camera();
+        draw_texture_ex(
+            &tilegrid_texture.texture,
+            // texturemap.get("land").unwrap(),
+            grid.marginx,
+            grid.marginy,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(grid.width as f32 * grid.tilewidth, grid.height as f32 * grid.tileheight)),
+                ..Default::default()
+            },
+        );
 
         // Mouse hovering
         {
@@ -370,6 +442,9 @@ async fn main() {
             //Draw an outline around the selected tile
             draw_rectangle_lines(mouse_x as f32 * grid.tilewidth + grid.marginx, mouse_y as f32 * grid.tileheight + grid.marginy, grid.tilewidth, grid.tileheight, grid.tilewidth*0.15, WHITE);
         }
+
+        
+
         next_frame().await;
     }
 }
