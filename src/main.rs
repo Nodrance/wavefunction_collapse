@@ -253,11 +253,12 @@ enum Rendermode {
     Texture,
     Debug,
 }
+
 #[macroquad::main("WavefunctionCollapse")]
 async fn main() {                
 
     let mut framecount = 0;
-    let mut grid = TileGrid::new(5, 5, 20.0, 20.0, 0.0, 0.0);
+    let mut grid = TileGrid::new(50, 50, 20.0, 20.0, 0.0, 0.0);
     let mut whitegrid = false;
     let mut rendermode = Rendermode::Texture;
     let texturemap = load_textures_paths(
@@ -267,13 +268,62 @@ async fn main() {
     let mut tilegrid_texture = render_target(1, 1);
     let mut old_lod_x = 0;
     let mut old_lod_y = 0;
-
+    let mut old_texture_width = 0;
+    let mut old_texture_height = 0;
     loop {
+        let lod_x = 2 << (grid.tilewidth.log2() as i32);
+        let lod_y = 2 << (grid.tileheight.log2() as i32);
+        let width_up = 2 << (grid.width.ilog2());
+        let height_up = 2 << (grid.height.ilog2());
+        let texture_width = min(width_up * lod_x, screen_width() as i32 * 2);
+        let texture_height = min(height_up * lod_y, screen_height() as i32 * 2);
+        if lod_x != old_lod_x || lod_y != old_lod_y || texture_width != old_texture_width || texture_height != old_texture_height {
+            let old_tilegrid_texture = tilegrid_texture.clone();
+            tilegrid_texture = render_target(texture_width as u32, texture_height as u32);
+            tilegrid_texture.texture.set_filter(FilterMode::Nearest);
+            set_camera(&Camera2D {
+                render_target: Some(tilegrid_texture.clone()),
+                .. Camera2D::from_display_rect(Rect::new(0.0, 0.0, texture_width as f32, texture_height as f32))
+            });
+            if lod_x > old_lod_x || lod_y > old_lod_y {
+                old_texture_height *= 2;
+                old_texture_width *= 2;
+            }
+            if lod_x < old_lod_x || lod_y < old_lod_y {
+                old_texture_height /= 2;
+                old_texture_width /= 2;
+            }
+            draw_texture_ex(
+                &old_tilegrid_texture.texture,
+                0.0,
+                0.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(old_texture_width as f32, old_texture_height as f32)),
+                    flip_y: true,
+                    ..Default::default()
+                },
+            );
+            println!("lod_x: {}, lod_y: {}, texture_width: {}, texture_height: {}", lod_x, lod_y, texture_width, texture_height);
+            old_lod_x = lod_x;
+            old_lod_y = lod_y;
+            old_texture_width = texture_width;
+            old_texture_height = texture_height;
+        }
+        
+        set_camera(&Camera2D {
+            render_target: Some(tilegrid_texture.clone()),
+            .. Camera2D::from_display_rect(Rect::new(0.0, 0.0, texture_width as f32, texture_height as f32))
+        });
 
         // Zoom
         {
-            if is_key_down(KeyCode::Equal) {grid.tilewidth *= 1.01; grid.tileheight *= 1.01; grid.marginx *= 1.01; grid.marginy *= 1.01;}
-            if is_key_down(KeyCode::Minus) {grid.tilewidth *= 0.99; grid.tileheight *= 0.99; grid.marginx *= 0.99; grid.marginy *= 0.99;}
+            if is_key_down(KeyCode::Equal) &&grid.tilewidth < screen_width()/4.0 && grid.tileheight < screen_height()/4.0 {
+                grid.tilewidth *= 1.01; grid.tileheight *= 1.01; grid.marginx *= 1.01; grid.marginy *= 1.01;
+            }
+            if is_key_down(KeyCode::Minus) && grid.tilewidth > 3.0 && grid.tileheight > 3.0 {
+                grid.tilewidth *= 0.99; grid.tileheight *= 0.99; grid.marginx *= 0.99; grid.marginy *= 0.99;
+            }
         }
 
         // Movement
@@ -354,53 +404,10 @@ async fn main() {
         if is_key_down(KeyCode::I) {rendermode = Rendermode::Texture;}
         if is_key_down(KeyCode::O) {rendermode = Rendermode::Debug;}
 
-        /*
-        There are screenwidth/tilewidth * screenheight/tileheight tiles on the screen
-        Each tile needs at least screenwidth/gridwidth pixels of width and screenheight/gridheight pixels of height
-        The texture needs to be screenwidth/gridwidth * screenwidth/tilewidth pixels of width and screenheight/gridheight * screenheight/tileheight pixels of height
-        */
-        let tile_pixels_x = screen_width()/(grid.width as f32);
-        let tile_pixels_y = screen_height()/(grid.height as f32);
-        let lod_x = tile_pixels_x.log2() as i32;
-        let lod_y = tile_pixels_y.log2() as i32;
-        if lod_x != old_lod_x || lod_y != old_lod_y {
-            let old_tilegrid_texture = tilegrid_texture.clone();
-            tilegrid_texture = render_target((2^lod_x) as u32, (2^lod_y) as u32);
-            tilegrid_texture.texture.set_filter(FilterMode::Nearest);
-            set_camera(&Camera2D {
-                zoom: vec2(1.0, 1.0),
-                target: vec2(0.0, 0.0),
-                render_target: Some(tilegrid_texture.clone()),
-                ..Default::default()
-            });
-            draw_texture_ex(
-                &old_tilegrid_texture.texture,
-                0.0,
-                0.0,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(vec2((2^old_lod_x) as f32, (2^old_lod_y) as f32)),
-                    ..Default::default()
-                },
-            );
-            old_lod_x = lod_x;
-            old_lod_y = lod_y;
-        }
-        
-
-
-
-
-        set_camera(&Camera2D {
-            zoom: vec2(1.0, 1.0),
-            target: vec2(0.0, 0.0),
-            render_target: Some(tilegrid_texture.clone()),
-            ..Default::default()
-        });
         // All rendering code
         framecount += 1;
         match rendermode {
-            Rendermode::Texture => draw_tilegrid(&grid, &texturemap, framecount, (2^lod_x) as f32, (2^lod_y) as f32),
+            Rendermode::Texture => draw_tilegrid(&grid, &texturemap, framecount, lod_x as f32, lod_y as f32),
             _ => debug_draw_tilegrid(&grid),
         }
 
@@ -409,16 +416,17 @@ async fn main() {
         if whitegrid {
             draw_whitegrid(&grid);
         }
-
+        let render_width = if width_up as f32 * grid.tilewidth > screen_width()*2.0 {screen_width()*2.0*(grid.tilewidth/lod_x as f32)} else {width_up as f32 * grid.tilewidth};
+        let render_height = if height_up as f32 * grid.tileheight > screen_height()*2.0 {screen_height()*2.0*(grid.tileheight/lod_y as f32)} else {height_up as f32 * grid.tileheight};
         set_default_camera();
         draw_texture_ex(
             &tilegrid_texture.texture,
-            // texturemap.get("land").unwrap(),
             grid.marginx,
             grid.marginy,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(vec2(grid.width as f32 * grid.tilewidth, grid.height as f32 * grid.tileheight)),
+                dest_size: Some(vec2(render_width, render_height)),
+                flip_y: true,
                 ..Default::default()
             },
         );
