@@ -26,14 +26,10 @@ struct TileGrid {
     tilegrid: Vec<Vec<UndecidedTile>>,
     width: i32,
     height: i32,
-    tilewidth: f32,
-    tileheight: f32,
-    marginx: f32,
-    marginy: f32,
 }
 
 impl TileGrid {
-    fn new (width: i32, height: i32, tilewidth: f32, tileheight: f32, marginx: f32, marginy: f32) -> Self {
+    fn new (width: i32, height: i32) -> Self {
         let mut tilegrid = Vec::<Vec<UndecidedTile>>::new();
         for _ in 0..width {
             let mut col = Vec::<UndecidedTile>::new();
@@ -46,10 +42,6 @@ impl TileGrid {
             tilegrid,
             width,
             height,
-            tilewidth,
-            tileheight,
-            marginx,
-            marginy,
         };
         output.restrict_grid();
         return output;
@@ -258,7 +250,7 @@ enum Rendermode {
 async fn main() {                
 
     let mut framecount = 0;
-    let mut grid = TileGrid::new(50, 50, 20.0, 20.0, 0.0, 0.0);
+    let mut grid = TileGrid::new(50, 50);
     let mut whitegrid = false;
     let mut rendermode = Rendermode::Texture;
     let texturemap = load_textures_paths(
@@ -270,13 +262,19 @@ async fn main() {
     let mut old_lod_y = 0;
     let mut old_texture_width = 0;
     let mut old_texture_height = 0;
+    let mut zoom_x = 1.0;
+    let mut zoom_y = 1.0;
+    const MARGIN_X: f32 = 10.0;
+    const MARGIN_Y: f32 = 10.0;
     loop {
-        let lod_x = 2 << (grid.tilewidth.log2() as i32);
-        let lod_y = 2 << (grid.tileheight.log2() as i32);
+        let lod_x = 2 << ((zoom_x*32.0_f32).log2() as i32);
+        let lod_y = 2 << ((zoom_y*32.0_f32).log2() as i32);
         let width_up = 2 << (grid.width.ilog2());
         let height_up = 2 << (grid.height.ilog2());
         let texture_width = min(width_up * lod_x, screen_width() as i32 * 2);
         let texture_height = min(height_up * lod_y, screen_height() as i32 * 2);
+        let effective_tilewidth = 32.0 * zoom_x;
+        let effective_tileheight = 32.0 * zoom_y;
         if lod_x != old_lod_x || lod_y != old_lod_y || texture_width != old_texture_width || texture_height != old_texture_height {
             let old_tilegrid_texture = tilegrid_texture.clone();
             tilegrid_texture = render_target(texture_width as u32, texture_height as u32);
@@ -318,11 +316,13 @@ async fn main() {
 
         // Zoom
         {
-            if is_key_down(KeyCode::Equal) &&grid.tilewidth < screen_width()/4.0 && grid.tileheight < screen_height()/4.0 {
-                grid.tilewidth *= 1.01; grid.tileheight *= 1.01; grid.marginx *= 1.01; grid.marginy *= 1.01;
+            if is_key_down(KeyCode::Equal) && zoom_x < 30.0 && zoom_y < 30.0 {
+                zoom_x *= 1.01;
+                zoom_y *= 1.01;
             }
-            if is_key_down(KeyCode::Minus) && grid.tilewidth > 3.0 && grid.tileheight > 3.0 {
-                grid.tilewidth *= 0.99; grid.tileheight *= 0.99; grid.marginx *= 0.99; grid.marginy *= 0.99;
+            if is_key_down(KeyCode::Minus) && zoom_x > 0.1 && zoom_y > 0.1 {
+                zoom_x *= 0.99;
+                zoom_y *= 0.99;
             }
         }
 
@@ -341,8 +341,8 @@ async fn main() {
         // Mouse positioning
         let mouse_x_pos = mouse_position().0;
         let mouse_y_pos = mouse_position().1;
-        let mut mouse_x = ((mouse_x_pos - grid.marginx) / grid.tilewidth) as i32;
-        let mut mouse_y = ((mouse_y_pos - grid.marginy) / grid.tileheight) as i32;
+        let mut mouse_x = ((mouse_x_pos - MARGIN_X) / effective_tilewidth) as i32;
+        let mut mouse_y = ((mouse_y_pos - MARGIN_Y) / effective_tileheight) as i32;
         if mouse_y < 0 {mouse_y = 0;}
         if mouse_y >= grid.height {mouse_y = grid.height-1;}
         if mouse_x < 0 {mouse_x = 0;}
@@ -416,16 +416,20 @@ async fn main() {
         if whitegrid {
             draw_whitegrid(&grid);
         }
-        let render_width = if width_up as f32 * grid.tilewidth > screen_width()*2.0 {screen_width()*2.0*(grid.tilewidth/lod_x as f32)} else {width_up as f32 * grid.tilewidth};
-        let render_height = if height_up as f32 * grid.tileheight > screen_height()*2.0 {screen_height()*2.0*(grid.tileheight/lod_y as f32)} else {height_up as f32 * grid.tileheight};
+        let width_a = 32.0*width_up as f32*zoom_x;
+        let height_a = 32.0*height_up as f32*zoom_y;
+        let width_b = (texture_width as f32/lod_x as f32)*32.0*zoom_x;
+        let height_b = (texture_height as f32/lod_y as f32)*32.0*zoom_y;
+        let width = if texture_width == screen_width() as i32 * 2 {width_b} else {width_a};
+        let height = if texture_height == screen_height() as i32 * 2 {height_b} else {height_a};
         set_default_camera();
         draw_texture_ex(
             &tilegrid_texture.texture,
-            grid.marginx,
-            grid.marginy,
+            MARGIN_X,
+            MARGIN_Y,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(vec2(render_width, render_height)),
+                dest_size: Some(vec2(width, height)),
                 flip_y: true,
                 ..Default::default()
             },
@@ -435,20 +439,20 @@ async fn main() {
         {
             let tiles = grid.tilegrid[mouse_x as usize][mouse_y as usize].clone().possible_tiles;
             if tiles.len() > 1 {
-                let x_spacing = grid.tilewidth * 1.1;
+                let x_spacing = effective_tilewidth * 1.1;
                 let width = (tiles.len() as f32 + 0.35) * x_spacing;
-                draw_rectangle(0.0, screen_height()-grid.tileheight*1.9, width, grid.tileheight*3.0, BLACK);
+                draw_rectangle(0.0, screen_height()-effective_tileheight*1.9, width, effective_tileheight*3.0, BLACK);
                 for (i, tile) in tiles.iter().enumerate() {
-                    draw_tile_opt( (i as f32 + 0.2) * x_spacing, screen_height()-grid.tileheight*1.3, grid.tilewidth, grid.tileheight, tile, &texturemap);
-                    let text_x = if i+1 < 10 {(i as f32 + 0.65) * x_spacing - grid.tileheight*0.15} else {(i as f32 + 0.65)* x_spacing - grid.tileheight*0.35};
-                    draw_text(&format!("{}", i+1), text_x, screen_height()-grid.tileheight*1.4, grid.tileheight*0.7, WHITE);
+                    draw_tile_opt( (i as f32 + 0.2) * x_spacing, screen_height()-effective_tileheight*1.3, effective_tilewidth, effective_tileheight, tile, &texturemap);
+                    let text_x = if i+1 < 10 {(i as f32 + 0.65) * x_spacing - effective_tileheight*0.15} else {(i as f32 + 0.65)* x_spacing - effective_tileheight*0.35};
+                    draw_text(&format!("{}", i+1), text_x, screen_height()-effective_tileheight*1.4, effective_tileheight*0.7, WHITE);
                     if i%10 == 0 && i != 0 {
-                        draw_line((i as f32 + 0.15) * x_spacing, screen_height()-grid.tileheight*1.9, (i as f32 + 0.15) * x_spacing, screen_height()-grid.tileheight*0.3, grid.tilewidth*0.1, WHITE);
+                        draw_line((i as f32 + 0.15) * x_spacing, screen_height()-effective_tileheight*1.9, (i as f32 + 0.15) * x_spacing, screen_height()-effective_tileheight*0.3, effective_tilewidth*0.1, WHITE);
                     }
                 }
             }
             //Draw an outline around the selected tile
-            draw_rectangle_lines(mouse_x as f32 * grid.tilewidth + grid.marginx, mouse_y as f32 * grid.tileheight + grid.marginy, grid.tilewidth, grid.tileheight, grid.tilewidth*0.15, WHITE);
+            draw_rectangle_lines(mouse_x as f32 * effective_tilewidth + MARGIN_X, mouse_y as f32 * effective_tileheight + MARGIN_Y, effective_tilewidth, effective_tileheight, effective_tilewidth*0.15, WHITE);
         }
 
         
