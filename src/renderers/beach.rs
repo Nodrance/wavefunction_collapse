@@ -25,10 +25,12 @@ pub async fn load_textures_paths<T: Hash + Eq + Clone>(paths: &[&str], keys: &[T
                 hashmap.insert(keys[i].clone(), texture);
             }
             else {
+                println!("Failed to load texture from path: {}", dir);
                 hashmap.insert(keys[i].clone(), missing_texture.clone());
             }
         }
         else {
+            println!("Not enough paths provided to load_textures_paths");
             hashmap.insert(keys[i].clone(), missing_texture.clone());
         }
     }

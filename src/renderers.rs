@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+
 /// Draws rectangles for each connection, with tiny center triangles
 // pub mod wires; 
 /// Draws triangles for each connection
