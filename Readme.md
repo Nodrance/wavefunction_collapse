@@ -20,7 +20,7 @@ and a wavefunction which should define
 - WASD to move the bottom left corner
 - UDLR to shift the whole grid
 - Space (hold) to autogenerate
-- RTY to change render mode (t is unsupported)
+- IOP to change render mode
 - G to toggle grid
 - click to collapse a tile
 - right click to uncollapse a tile, fails if there are decided tiles locking it in
@@ -29,4 +29,7 @@ and a wavefunction which should define
 
 todo: make beach into generic renderer
 add indicators for shift, alt, ctrl
+add puzzle, castle, and train/town wavefunctions
+profile and reduce ram usage
+better (onscreen w/ mouse) UI
 
