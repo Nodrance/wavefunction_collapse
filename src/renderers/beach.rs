@@ -63,17 +63,18 @@ pub async fn load_textures_stringable<T: Hash + Eq + Clone + ToString>(folder: &
     return hashmap;
 }
 
-pub fn draw_tilegrid (grid: &TileGrid, textures: &HashMap<&str, Texture2D>, x_size:f32, y_size: f32, offset: i32, render_every: i32) {
+pub fn draw_tilegrid (grid: &TileGrid, textures: &HashMap<&str, Texture2D>, tile_size: Vec2, texture_limits: Vec2, offset: i32, render_every: i32) {
     for i in 0..grid.width {
         for j in 0..grid.height {
             // render 1 in render_every tiles
-            if (i*3 + j)%render_every != offset%render_every {
+            if (i*101 + j*5)%render_every != offset%render_every {
                 continue;
             }
-            let tx = (i as f32) * x_size;
-            let ty = (j as f32) * y_size;
+            let tx = (i as f32) * tile_size.x;
+            let ty = (j as f32) * tile_size.y;
             // don't render tiles that are offscreen
-            if tx < -x_size || ty < -y_size || tx > grid.tilegrid_texture.texture.width() || ty > grid.tilegrid_texture.texture.height() {
+            
+            if tx < -tile_size.x || ty < -tile_size.y || tx > texture_limits.x || ty > texture_limits.y {
                 continue;
             }
             let tile = &grid.tilegrid[i as usize][j as usize];
@@ -83,19 +84,19 @@ pub fn draw_tilegrid (grid: &TileGrid, textures: &HashMap<&str, Texture2D>, x_si
             let tileopt = if tile.possible_tiles.len() == 1 {&tile.possible_tiles[0]}
             else {tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap()};
 
-            draw_tile_opt(tx, ty, x_size, y_size, tileopt, textures);
+            draw_tile_opt(tx, ty, tile_size, tileopt, textures);
         }
     }
-    draw_rectangle(grid.width as f32 * x_size, 0.0, grid.width as f32 * x_size, grid.height as f32 * y_size * 2.0, BLACK);
-    draw_rectangle(0.0, grid.height as f32 * y_size, grid.width as f32 * x_size, grid.height as f32 * y_size, BLACK);
+    draw_rectangle(grid.width as f32 * tile_size.x, 0.0, grid.width as f32 * tile_size.x, grid.height as f32 * tile_size.y * 2.0, BLACK);
+    draw_rectangle(0.0, grid.height as f32 * tile_size.y, grid.width as f32 * tile_size.x, grid.height as f32 * tile_size.y, BLACK);
 }
 
-pub fn draw_tile_opt (x: f32, y: f32, width: f32, height: f32, tileopt: &TileChoice, textures: &HashMap<&str, Texture2D>) {
+pub fn draw_tile_opt (x: f32, y: f32, tile_size: Vec2, tileopt: &TileChoice, textures: &HashMap<&str, Texture2D>) {
     let texture = textures.get(tileopt.texture).unwrap();
-    let dest_size = if tileopt.rot90 {Vec2::new(height, width)} else {Vec2::new(width, height)};
+    let dest_size = if tileopt.rot90 {Vec2::new(tile_size.y, tile_size.x)} else {tile_size};
     // textures are rotated at their center after scaling, which won't be the same as the tile's center
-    let x = x + if tileopt.rot90 {(width-height)/2.0} else {0.0};
-    let y = y + if tileopt.rot90 {(height-width)/2.0} else {0.0};
+    let x = x + if tileopt.rot90 {(tile_size.x-tile_size.y)/2.0} else {0.0};
+    let y = y + if tileopt.rot90 {(tile_size.y-tile_size.x)/2.0} else {0.0};
     let params = DrawTextureParams {
         dest_size: Some(dest_size),
         rotation: if tileopt.rot90 {std::f32::consts::FRAC_PI_2} else {0.0},
