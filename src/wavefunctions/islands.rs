@@ -116,15 +116,41 @@ impl TileGrid {
         const FREE_WEIGHT: i32 = 1000; //when this is high, it will prioritize tiles that don't have the least options
         // restricted_weight is good for when the ruleset is restrictive (such as "all tiles must have precisely 2 connections"), and for making large blocks
         // free_weight is good for when you want smaller, more scattered blocks
-        // triangle renderer is recommended to see the difference
-        for i in 0..self.width {
-            for j in 0..self.height {
-                let tile = &self.tilegrid[i as usize][j as usize];
+        if self.width * self.height <= 1000 {
+            for i in 0..self.width {
+                for j in 0..self.height {
+                    let tile = &self.tilegrid[i as usize][j as usize];
+                    if tile.possible_tiles.len() == 1 {
+                        continue;
+                    }
+                    total_seen += 1;
+    
+                    match tile.possible_tiles.len().cmp(&least_seen) {
+                        Ordering::Less => {
+                            least_seen = tile.possible_tiles.len();
+                            weights = vec![FREE_WEIGHT;total_seen-1];
+                            weights.push(RESTRICTED_WEIGHT);
+                        }
+                        Ordering::Equal => {
+                            weights.push(RESTRICTED_WEIGHT);
+                        },
+                        Ordering::Greater => {
+                            weights.push(FREE_WEIGHT);
+                        },
+                    }
+                    candidate_indices.push((i, j));
+                }
+            }
+        }
+        else {
+            for i in 0..50 {
+                let x = ::rand::thread_rng().gen_range(0..self.width);
+                let y = ::rand::thread_rng().gen_range(0..self.height);
+                let tile = &self.tilegrid[x as usize][y as usize];
                 if tile.possible_tiles.len() == 1 {
                     continue;
                 }
                 total_seen += 1;
-
                 match tile.possible_tiles.len().cmp(&least_seen) {
                     Ordering::Less => {
                         least_seen = tile.possible_tiles.len();
@@ -138,7 +164,7 @@ impl TileGrid {
                         weights.push(FREE_WEIGHT);
                     },
                 }
-                candidate_indices.push((i, j));
+                candidate_indices.push((x, y));
             }
         }
 

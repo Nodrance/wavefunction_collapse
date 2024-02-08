@@ -283,11 +283,13 @@ async fn main() {
         &["assets/islands/beach.png", "assets/islands/beach_water_corner.png", "assets/islands/beach_land_corner.png", "assets/islands/land.png", "assets/islands/water.png"], 
         &["beach", "beach_water_corner", "beach_land_corner", "land", "water"]
     ).await;
-    let mut grid = TileGrid::new(50, 50, texturemap);
+    let mut grid = TileGrid::new(500, 200, texturemap);
     let mut zoom_x = 1.0;
     let mut zoom_y = 1.0;
     const MARGIN_X: f32 = 10.0;
     const MARGIN_Y: f32 = 10.0;
+    let max_res_placeholder = render_target(screen_height()as u32 *2, screen_width() as u32 *2);
+    let mid_res_placeholder = render_target(1024, 1024);
 
     //Persist between loops
     //framecount: the number of frames that have passed since the program started, used to only render a subset of tiles
@@ -326,7 +328,7 @@ async fn main() {
                 zoom_x *= 1.01;
                 zoom_y *= 1.01;
             }
-            if is_key_down(KeyCode::Minus) && zoom_x > 0.1 && zoom_y > 0.1 {
+            if is_key_down(KeyCode::Minus) && zoom_x > 0.025 && zoom_y > 0.025 {
                 zoom_x *= 0.99;
                 zoom_y *= 0.99;
             }
@@ -436,6 +438,24 @@ async fn main() {
                 old_texture_height /= 2.0;
                 old_texture_width /= 2.0;
             }
+            let placeholder;
+            if texture_width == screen_width() as i32 * 2 {
+                placeholder = max_res_placeholder.clone();
+            }
+            else {
+                placeholder = mid_res_placeholder.clone();
+            }
+            draw_texture_ex(
+                &placeholder.texture, 
+                0.0, 
+                0.0, 
+                WHITE, 
+                DrawTextureParams {
+                    dest_size: Some(vec2(max_res_placeholder.texture.width(), max_res_placeholder.texture.height())),
+                    flip_y: true,
+                    ..Default::default()
+                },
+            );
             draw_texture_ex(
                 &grid.tilegrid_texture.texture,
                 0.0,
@@ -447,21 +467,48 @@ async fn main() {
                     ..Default::default()
                 },
             );
+            grid.tilegrid_texture = tilegrid_texture;
             println!("lod_x: {}, lod_y: {}, texture_width: {}, texture_height: {}", lod_x, lod_y, texture_width, texture_height);
             grid.lod_x = lod_x;
             grid.lod_y = lod_y;
         }
-        
-        set_camera(&Camera2D {
-            render_target: Some(grid.tilegrid_texture.clone()),
-            .. Camera2D::from_display_rect(Rect::new(0.0, 0.0, grid.tilegrid_texture.texture.width(), grid.tilegrid_texture.texture.height()))
-        });
-
 
         framecount += 1;
-        match grid.rendermode {
-            Rendermode::Texture => draw_tilegrid(&grid, &grid.texturemap, framecount, lod_x as f32, lod_y as f32),
-            _ => debug_draw_tilegrid(&grid),
+        
+        //Render to the placeholder textures for zooming
+        {
+            
+            let render_every = grid.width*grid.height/100;
+            set_camera(&Camera2D {
+                render_target: Some(max_res_placeholder.clone()),
+                .. Camera2D::from_display_rect(Rect::new(0.0, 0.0, max_res_placeholder.texture.width(), max_res_placeholder.texture.height()))
+            });
+            match grid.rendermode {
+                Rendermode::Texture => draw_tilegrid(&grid, &grid.texturemap,2.0, 2.0, framecount, render_every),
+                _ => debug_draw_tilegrid(&grid),
+            }
+            set_camera(&Camera2D {
+                render_target: Some(max_res_placeholder.clone()),
+                .. Camera2D::from_display_rect(Rect::new(0.0, 0.0, max_res_placeholder.texture.width(), max_res_placeholder.texture.height()))
+            });
+            match grid.rendermode {
+                Rendermode::Texture => draw_tilegrid(&grid, &grid.texturemap,8.0, 8.0, framecount, render_every),
+                _ => debug_draw_tilegrid(&grid),
+            }
+        }
+
+        //Main render
+        {
+            set_camera(&Camera2D {
+                render_target: Some(grid.tilegrid_texture.clone()),
+                .. Camera2D::from_display_rect(Rect::new(0.0, 0.0, grid.tilegrid_texture.texture.width(), grid.tilegrid_texture.texture.height()))
+            });
+            // let render_every = (100.0/((lod_x.ilog2()*lod_y.ilog2()) + 1) as f32) as i32 + 1; //Based on LOD
+            let render_every = grid.width*grid.height/1000; //Based on fixed number of tiles per frame
+            // match grid.rendermode {
+            //     Rendermode::Texture => draw_tilegrid(&grid, &grid.texturemap,lod_x as f32, lod_y as f32, framecount, render_every),
+            //     _ => debug_draw_tilegrid(&grid),
+            // }
         }
 
         //Grid
@@ -483,6 +530,7 @@ async fn main() {
             WHITE,
             DrawTextureParams {
                 dest_size: Some(vec2(width, height)),
+                // dest_size: Some(vec2(screen_width(), screen_height())),
                 flip_y: true,
                 ..Default::default()
             },
@@ -492,15 +540,26 @@ async fn main() {
         {
             let tiles = grid.tilegrid[mouse_x as usize][mouse_y as usize].clone().possible_tiles;
             if tiles.len() > 1 {
-                let x_spacing = effective_tilewidth * 1.1;
-                let width = (tiles.len() as f32 + 0.35) * x_spacing;
-                draw_rectangle(0.0, screen_height()-effective_tileheight*1.9, width, effective_tileheight*3.0, BLACK);
+                /// Draw the possible tiles at the bottom of the screen
+                const TILEWIDTH:f32 = 32.0;
+                const TILEHEIGHT:f32 = 32.0;
+                const X_SPACING:f32 = TILEWIDTH * 1.1;
+                const L_PADDING:f32 = 0.2 * TILEWIDTH;
+                const R_PADDING:f32 = 0.2 * TILEWIDTH;
+                const T_PADDING:f32 = 0.8 * TILEHEIGHT;
+                const B_PADDING:f32 = 0.2 * TILEHEIGHT;
+                let rect_width = (tiles.len() as f32) * X_SPACING + L_PADDING + R_PADDING;
+                let rect_height = TILEHEIGHT + T_PADDING + B_PADDING;
+                draw_rectangle(0.0, screen_height()-rect_height, rect_width, rect_height, BLACK);
+
                 for (i, tile) in tiles.iter().enumerate() {
-                    draw_tile_opt( (i as f32 + 0.2) * x_spacing, screen_height()-effective_tileheight*1.3, effective_tilewidth, effective_tileheight, tile, &grid.texturemap);
-                    let text_x = if i+1 < 10 {(i as f32 + 0.65) * x_spacing - effective_tileheight*0.15} else {(i as f32 + 0.65)* x_spacing - effective_tileheight*0.35};
-                    draw_text(&format!("{}", i+1), text_x, screen_height()-effective_tileheight*1.4, effective_tileheight*0.7, WHITE);
+                    let x = (i as f32) * X_SPACING + L_PADDING;
+                    let y = screen_height()-TILEHEIGHT-B_PADDING;
+                    draw_tile_opt( x, y, TILEWIDTH, TILEHEIGHT, tile, &grid.texturemap);
+                    let text_x = if i+1 < 10 {(i as f32 + 0.65) * X_SPACING - TILEHEIGHT*0.15} else {(i as f32 + 0.65)* X_SPACING - TILEHEIGHT*0.35};
+                    draw_text(&format!("{}", i+1), text_x, screen_height()-TILEHEIGHT*1.4, TILEHEIGHT*0.7, WHITE);
                     if i%10 == 0 && i != 0 {
-                        draw_line((i as f32 + 0.15) * x_spacing, screen_height()-effective_tileheight*1.9, (i as f32 + 0.15) * x_spacing, screen_height()-effective_tileheight*0.3, effective_tilewidth*0.1, WHITE);
+                        draw_line((i as f32 + 0.15) * X_SPACING, screen_height()-TILEHEIGHT*1.9, (i as f32 + 0.15) * X_SPACING, screen_height()-TILEHEIGHT*0.3, X_SPACING-TILEWIDTH, WHITE);
                     }
                 }
             }

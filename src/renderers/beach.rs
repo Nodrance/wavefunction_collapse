@@ -63,19 +63,26 @@ pub async fn load_textures_stringable<T: Hash + Eq + Clone + ToString>(folder: &
     return hashmap;
 }
 
-pub fn draw_tilegrid (grid: &TileGrid, textures: &HashMap<&str, Texture2D>, offset:i32, x_size:f32, y_size: f32) {
+pub fn draw_tilegrid (grid: &TileGrid, textures: &HashMap<&str, Texture2D>, x_size:f32, y_size: f32, offset: i32, render_every: i32) {
     for i in 0..grid.width {
         for j in 0..grid.height {
-            if (i*3 + j)%10 != offset%10 {
+            // render 1 in render_every tiles
+            if (i*3 + j)%render_every != offset%render_every {
+                continue;
+            }
+            let tx = (i as f32) * x_size;
+            let ty = (j as f32) * y_size;
+            // don't render tiles that are offscreen
+            if tx < -x_size || ty < -y_size || tx > grid.tilegrid_texture.texture.width() || ty > grid.tilegrid_texture.texture.height() {
                 continue;
             }
             let tile = &grid.tilegrid[i as usize][j as usize];
-            let tileopt = if tile.possible_tiles.len() == 1 {&tile.possible_tiles[0]}
-            else {tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap()};
+            // alternate choice methods
             // let tileopt = &tile.possible_tiles[rand as usize % tile.possible_tiles.len()];
             // let tileopt = &tile.possible_tiles[0];
-            let tx = (i as f32) * x_size;
-            let ty = (j as f32) * y_size;
+            let tileopt = if tile.possible_tiles.len() == 1 {&tile.possible_tiles[0]}
+            else {tile.possible_tiles.choose(&mut ::rand::thread_rng()).unwrap()};
+
             draw_tile_opt(tx, ty, x_size, y_size, tileopt, textures);
         }
     }
