@@ -36,11 +36,11 @@ It also imports a wavefunction which should define
 - click to collapse a tile
 - right click to uncollapse a tile, fails if there are decided tiles locking it in
 - 1234567890 to pick option 1-10 from the tile your mouse is over (see bottom corner)
-- - Hold Lshift to add 10, Lalt for 20, Lcontrol for 40,  
+- - Hold Lshift to add 10, Lalt for 20, Lcontrol for 40, does not work for R
+- F (hold) for FPS (unsmoothed, might need to work on that lol)
 
 add indicators for shift, alt, ctrl
 add puzzle, castle, and train/town wavefunctions
 profile and reduce ram usage
 better (onscreen w/ mouse) UI
-ui that lists all tile variants not just existing ones
-
+ui that lists all tile variants not just ones in the tile

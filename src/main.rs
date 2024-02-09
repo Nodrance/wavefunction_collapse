@@ -618,9 +618,10 @@ async fn main() {
         }
 
         //FPS
-        draw_rectangle(0.0, 0.0, 50.0, 20.0, BLACK);
-        draw_text(&format!("FPS: {}", get_fps()), 5.0, 10.0, 10.0, WHITE);
-
+        if is_key_down(KeyCode::F) {
+            draw_rectangle(0.0, 0.0, 50.0, 20.0, BLACK);
+            draw_text(&format!("FPS: {}", get_fps()), 5.0, 10.0, 10.0, WHITE);
+        }
         framecount += 1;
         next_frame().await;
     }
