@@ -52,41 +52,40 @@ impl UndecidedTile {
         const WATER_WEIGHT: i32 = 50;
 
         // Straight Beaches
-        let mut cons = [c::Land, c::Water, c::BeachCW, c::BeachCCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WEIGHT, texture: "beach", flipx: false, flipy: false, rot90: false});
-        cons = [c::BeachCW, c::BeachCCW, c::Water, c::Land];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WEIGHT, texture: "beach", flipx: false, flipy: false, rot90: true});
-        cons = [c::Water, c::Land, c::BeachCCW, c::BeachCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WEIGHT, texture: "beach", flipx: true, flipy: true, rot90: false});
-        cons = [c::BeachCCW, c::BeachCW, c::Land, c::Water];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WEIGHT, texture: "beach", flipx: true, flipy: true, rot90: true});
+        let connections = [c::Land, c::Water, c::BeachCW, c::BeachCCW];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_WEIGHT, texture: "beach", flipx: false, flipy: false, rot90: false});
+        let connections = [c::BeachCW, c::BeachCCW, c::Water, c::Land];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_WEIGHT, texture: "beach", flipx: false, flipy: false, rot90: true});
+        let connections = [c::Water, c::Land, c::BeachCCW, c::BeachCW];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_WEIGHT, texture: "beach", flipx: true, flipy: true, rot90: false});
+        let connections = [c::BeachCCW, c::BeachCW, c::Land, c::Water];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_WEIGHT, texture: "beach", flipx: true, flipy: true, rot90: true});
 
         // Watery Corners
-        cons = [c::BeachCCW, c::Water, c::BeachCW, c::Water];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: false, flipy: false, rot90: false});
-        cons = [c::BeachCW, c::Water, c::Water, c::BeachCCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: false, flipy: false, rot90: true});
-        cons = [c::Water, c::BeachCCW, c::Water, c::BeachCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: true, flipy: true, rot90: false});
-        cons = [c::Water, c::BeachCW, c::BeachCCW, c::Water];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: true, flipy: true, rot90: true});
+        let connections = [c::BeachCCW, c::Water, c::BeachCW, c::Water];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: false, flipy: false, rot90: false});
+        let connections = [c::BeachCW, c::Water, c::Water, c::BeachCCW];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: false, flipy: false, rot90: true});
+        let connections = [c::Water, c::BeachCCW, c::Water, c::BeachCW];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: true, flipy: true, rot90: false});
+        let connections = [c::Water, c::BeachCW, c::BeachCCW, c::Water];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_WATER_WEIGHT, texture: "beach_water_corner", flipx: true, flipy: true, rot90: true});
 
         // Land Corners
-        
-        cons = [c::Land, c::BeachCCW, c::BeachCW, c::Land];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: false, flipy: false, rot90: false});
-        cons = [c::BeachCW, c::Land, c::BeachCCW, c::Land];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: false, flipy: false, rot90: true});
-        cons = [c::BeachCCW, c::Land, c::Land, c::BeachCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: true, flipy: true, rot90: false});
-        cons = [c::Land, c::BeachCW, c::Land, c::BeachCCW];
-        possible_tiles.push(TileChoice {connections: cons, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: true, flipy: true, rot90: true});
+        let connections = [c::Land, c::BeachCCW, c::BeachCW, c::Land];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: false, flipy: false, rot90: false});
+        let connections = [c::BeachCW, c::Land, c::BeachCCW, c::Land];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: false, flipy: false, rot90: true});
+        let connections = [c::BeachCCW, c::Land, c::Land, c::BeachCW];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: true, flipy: true, rot90: false});
+        let connections = [c::Land, c::BeachCW, c::Land, c::BeachCCW];
+        possible_tiles.push(TileChoice {connections, weight: BEACH_LAND_WEIGHT, texture: "beach_land_corner", flipx: true, flipy: true, rot90: true});
 
         // Land and Water
-        cons = [c::Land, c::Land, c::Land, c::Land];
-        possible_tiles.push(TileChoice {connections: cons, weight: LAND_WEIGHT, texture: "land", flipx: false, flipy: false, rot90: false});
-        cons = [c::Water, c::Water, c::Water, c::Water];
-        possible_tiles.push(TileChoice {connections: cons, weight: WATER_WEIGHT, texture: "water", flipx: false, flipy: false, rot90: false});
+        let connections = [c::Land, c::Land, c::Land, c::Land];
+        possible_tiles.push(TileChoice {connections, weight: LAND_WEIGHT, texture: "land", flipx: false, flipy: false, rot90: false});
+        let connections = [c::Water, c::Water, c::Water, c::Water];
+        possible_tiles.push(TileChoice {connections, weight: WATER_WEIGHT, texture: "water", flipx: false, flipy: false, rot90: false});
 
         Self {
             possible_tiles,
