@@ -62,10 +62,10 @@ fn draw_tile_opt (x: f32, y: f32, tile_size: Vec2, tileopt: &TileChoice, texture
         let br = Vec2::new(x+tile_size.x*MARGIN2B, y+tile_size.y*MARGIN2B);
         let center = Vec2::new(x+(tile_size.x/2.0), y+(tile_size.y/2.0));
         let (v1, v2, v3) = match k {
-            0 => (tr, tl, center),
-            1 => (bl, br, center),
-            2 => (tl, bl, center),
-            _ => (br, tr, center),
+            0 => (tl, tr, center),
+            1 => (tr, br, center),
+            2 => (br, bl, center),
+            _ => (bl, tl, center),
         };
         draw_triangle(v1, v2, v3, color);
     }

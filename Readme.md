@@ -39,8 +39,10 @@ It also imports a wavefunction which should define
 - - Hold Lshift to add 10, Lalt for 20, Lcontrol for 40, does not work for R
 - F (hold) for FPS (unsmoothed, might need to work on that lol)
 
+todo:
 add indicators for shift, alt, ctrl
 add puzzle, castle, and train/town wavefunctions
 profile and reduce ram usage
 better (onscreen w/ mouse) UI
 ui that lists all tile variants not just ones in the tile
+music and sfx

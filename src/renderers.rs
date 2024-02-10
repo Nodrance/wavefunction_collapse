@@ -11,4 +11,4 @@ pub mod debug_grid_draw;
 /// Draws a grid of white lines
 pub mod whitegrid; 
 
-pub mod texture;
+pub mod puzzle;
