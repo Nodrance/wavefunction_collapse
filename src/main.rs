@@ -7,12 +7,12 @@ use std::collections::HashMap;
 mod renderers;
 use renderers::whitegrid::draw_tilegrid as draw_whitegrid;
 use renderers::debug_grid_draw::draw_tilegrid as debug_draw_tilegrid;
-use renderers::puzzle::load_textures_paths;
-use renderers::puzzle::draw_tilegrid;
-use renderers::puzzle::draw_tile_opt;
+use renderers::texture::load_textures_paths;
+use renderers::texture::draw_tilegrid;
+use renderers::texture::draw_tile_opt;
 
 mod wavefunctions;
-use wavefunctions::puzzle::*;
+use wavefunctions::castle::*;
 
 use std::cmp::max;
 use std::cmp::min;
@@ -279,8 +279,44 @@ async fn main() {
 
     let mut framecount = 0;
     let texturemap = load_textures_paths(
-        &["assets/puzzle/variation_1.png", "assets/puzzle/variation_2.png", "assets/puzzle/variation_3.png", "assets/puzzle/variation_4.png"], 
-        &["1", "2", "3", "4"]
+        &[
+            "assets/castle/Door L.png",
+            "assets/castle/Door R.png",
+            "assets/castle/Door TL.png",
+            "assets/castle/Door TR.png",
+            "assets/castle/Wall 1.png",
+            "assets/castle/Wall 2.png",
+            "assets/castle/Wall L1.png",
+            "assets/castle/Wall L2.png",
+            "assets/castle/Wall LC.png",
+            "assets/castle/Wall R1.png",
+            "assets/castle/Wall R2.png",
+            "assets/castle/Wall RC.png",
+            "assets/castle/Wall T.png",
+            "assets/castle/Wall TL.png",
+            "assets/castle/Wall TR.png",
+            "assets/castle/Window 1.png",
+            "assets/castle/Window 2.png",
+        ],
+        &[
+            "Door L",
+            "Door R",
+            "Door TL",
+            "Door TR",
+            "Wall 1",
+            "Wall 2",
+            "Wall L1",
+            "Wall L2",
+            "Wall LC",
+            "Wall R1",
+            "Wall R2",
+            "Wall RC",
+            "Wall T",
+            "Wall TL",
+            "Wall TR",
+            "Window 1",
+            "Window 2",
+        ]
     ).await;
     let mut grid = TileGrid::new(10, 10, texturemap.clone());
     let mut zoom_x = 1.0;
@@ -371,7 +407,7 @@ async fn main() {
         
         //Auto collapsing
         if is_key_down(KeyCode::Space) {
-            for _ in 0..1 {// warp factor
+            for _ in 0..100 {// warp factor
                 let x;
                 let y;
                 let indices = grid.pick_index();
