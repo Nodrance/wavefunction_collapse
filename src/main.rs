@@ -297,6 +297,7 @@ async fn main() {
             "assets/castle/Wall TR.png",
             "assets/castle/Window 1.png",
             "assets/castle/Window 2.png",
+            "assets/castle/Sky.png",
         ],
         &[
             "Door L",
@@ -316,6 +317,7 @@ async fn main() {
             "Wall TR",
             "Window 1",
             "Window 2",
+            "Sky",
         ]
     ).await;
     let mut grid = TileGrid::new(10, 10, texturemap.clone());

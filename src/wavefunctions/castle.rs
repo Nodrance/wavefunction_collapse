@@ -17,15 +17,16 @@ pub struct TileChoice {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Connection {
-    door_top, // The side of the top of a door
-    door_bottom, // The side of the bottom of a door
-    door_right, //The bottom of the right side of a door
-    door_left, // The bottom of the left side of a door
-    wall_left, // The left side of a wall, where the wall is on the right
-    wall_right, // The right side of a wall, where the wall is on the left
-    wall_top, // The top of a wall
-    wall_inner, // The interior of a wall
-    ground, // The ground
+    DoorTop, // The side of the top of a door
+    DoorBottom, // The side of the bottom of a door
+    DoorRight, //The bottom of the right side of a door
+    DoorLeft, // The bottom of the left side of a door
+    WallLeft, // The left side of a wall, where the wall is on the right
+    WallRight, // The right side of a wall, where the wall is on the left
+    WallTop, // The top of a wall
+    WallInner, // The interior of a wall
+    Ground, // The ground
+    Sky, // The sky
 }
 
 impl Connection {
@@ -33,9 +34,12 @@ impl Connection {
         if con1 == con2 {
             return true;
         }
-        if con1 == Connection::door_right || con1 == Connection::door_left {
-            return con2 == Connection::ground;
-        }
+        // if con2 == Connection::Ground {
+        //     return con1 == Connection::DoorRight || con1 == Connection::DoorLeft || con1 == Connection::Sky;
+        // }
+        // if con1 == Connection::Ground {
+        //     return con2 == Connection::DoorRight || con2 == Connection::DoorLeft || con2 == Connection::Sky;
+        // }
         return false;
     }
 }
@@ -45,15 +49,55 @@ impl UndecidedTile {
         let mut possible_tiles = Vec::<TileChoice>::new();
 
         use Connection as c;
-        const BEACH_WEIGHT: i32 = 10;
-        const BEACH_WATER_WEIGHT: i32 = 1;
-        const BEACH_LAND_WEIGHT: i32 = 1;
-        const LAND_WEIGHT: i32 = 30;
-        const WATER_WEIGHT: i32 = 50;
+        const DOOR_WEIGHT: i32 = 10;
+        const WINDOW_WEIGHT: i32 = 2;
+        const WALL_WEIGHT: i32 = 10;
+        const EDGE_WEIGHT: i32 = 1;
+        const TOP_WEIGHT: i32 = 100;
+        const OUTER_CORNER_WEIGHT: i32 = 100;
+        const INNER_CORNER_WEIGHT: i32 = 1;
 
-        // Straight Beaches
-        let connections = [c::door_left, c::door_bottom, c::door_left, c::wall_inner];
-        possible_tiles.push(TileChoice {connections, weight: BEACH_WEIGHT, texture: "beach", flipx: false, flipy: false, rot90: false});
+        // Door
+        let connections = [c::DoorLeft, c::DoorBottom, c::Ground, c::WallInner];
+        possible_tiles.push(TileChoice {connections, weight: DOOR_WEIGHT, texture: "Door L", flipx: false, flipy: false, rot90: false});
+        let connections = [c::DoorRight, c::WallInner, c::Ground, c::DoorBottom];
+        possible_tiles.push(TileChoice {connections, weight: DOOR_WEIGHT, texture: "Door R", flipx: false, flipy: false, rot90: false});
+        let connections = [c::WallInner, c::DoorTop, c::DoorLeft, c::WallInner];
+        possible_tiles.push(TileChoice {connections, weight: DOOR_WEIGHT, texture: "Door TL", flipx: false, flipy: false, rot90: false});
+        let connections = [c::WallInner, c::WallInner, c::DoorRight, c::DoorTop];
+        possible_tiles.push(TileChoice {connections, weight: DOOR_WEIGHT, texture: "Door TR", flipx: false, flipy: false, rot90: false});
+
+        // Wall and window
+        let connections = [c::WallInner, c::WallInner, c::WallInner, c::WallInner];
+        possible_tiles.push(TileChoice {connections, weight: WALL_WEIGHT, texture: "Wall 1", flipx: false, flipy: false, rot90: false});
+        possible_tiles.push(TileChoice {connections, weight: WALL_WEIGHT, texture: "Wall 2", flipx: false, flipy: false, rot90: false});
+        possible_tiles.push(TileChoice {connections, weight: WINDOW_WEIGHT, texture: "Window 1", flipx: false, flipy: false, rot90: false});
+        possible_tiles.push(TileChoice {connections, weight: WINDOW_WEIGHT, texture: "Window 2", flipx: false, flipy: false, rot90: false});
+
+        // Edge
+        let connections = [c::WallLeft, c::WallInner, c::WallLeft, c::Sky];
+        possible_tiles.push(TileChoice {connections, weight: EDGE_WEIGHT, texture: "Wall L1", flipx: false, flipy: false, rot90: false});
+        possible_tiles.push(TileChoice {connections, weight: EDGE_WEIGHT, texture: "Wall L2", flipx: false, flipy: false, rot90: false});
+        let connections = [c::WallRight, c::Sky, c::WallRight, c::WallInner];
+        possible_tiles.push(TileChoice {connections, weight: EDGE_WEIGHT, texture: "Wall R1", flipx: false, flipy: false, rot90: false});
+        possible_tiles.push(TileChoice {connections, weight: EDGE_WEIGHT, texture: "Wall R2", flipx: false, flipy: false, rot90: false});
+        let connections = [c::Sky, c::WallTop, c::WallInner, c::WallTop];
+        possible_tiles.push(TileChoice {connections, weight: TOP_WEIGHT, texture: "Wall T", flipx: false, flipy: false, rot90: false});
+        
+        // Corner
+        let connections = [c::Sky, c::WallTop, c::WallLeft, c::Sky];
+        possible_tiles.push(TileChoice {connections, weight: OUTER_CORNER_WEIGHT, texture: "Wall TL", flipx: false, flipy: false, rot90: false});
+        let connections = [c::Sky, c::Sky, c::WallRight, c::WallTop];
+        possible_tiles.push(TileChoice {connections, weight: OUTER_CORNER_WEIGHT, texture: "Wall TR", flipx: false, flipy: false, rot90: false});
+        let connections = [c::WallLeft, c::WallInner, c::WallInner, c::WallTop];
+        possible_tiles.push(TileChoice {connections, weight: INNER_CORNER_WEIGHT, texture: "Wall LC", flipx: false, flipy: false, rot90: false});
+        let connections = [c::WallRight, c::WallTop, c::WallInner, c::WallInner];
+        possible_tiles.push(TileChoice {connections, weight: INNER_CORNER_WEIGHT, texture: "Wall RC", flipx: false, flipy: false, rot90: false});
+
+        //Sky 
+        let connections = [c::Sky, c::Sky, c::Sky, c::Sky];
+        possible_tiles.push(TileChoice {connections, weight: 1, texture: "Sky", flipx: false, flipy: false, rot90: false});
+
 
         Self {
             possible_tiles,
