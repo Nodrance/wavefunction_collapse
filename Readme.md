@@ -43,8 +43,9 @@ todo:
 add indicators for shift, alt, ctrl, add support for right sides too
 add train and town/city wavefunctions
 profile and reduce ram usage
-better (onscreen w/ mouse) controls (shift, expand, zoom, autogen speed, rerender, toggle grid)
+better (onscreen w/ mouse) controls (shift, expand, zoom, autogen speed, rerender, toggle grid, reset)
 smooth fps
+add panning
 fix debug rerender and clear hotkeys
 make grid on different layer
 ui that lists all tile variants not just ones in the tile
@@ -53,3 +54,8 @@ pull texture definitions into wavefunction.rs
 move rendering functions into tilegrid
 add sensible defaults for new tileopts, grids so i can just to ..Default when I need to make a new one 
 music and sfx
+make it so tileopts are way easier to define, instead of the current thing
+
+upload to the web
+
+add the ability to switch wavefunctions without closing and reopening (main menu?)
