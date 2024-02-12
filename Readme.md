@@ -40,9 +40,16 @@ It also imports a wavefunction which should define
 - F (hold) for FPS (unsmoothed, might need to work on that lol)
 
 todo:
-add indicators for shift, alt, ctrl
-add puzzle, castle, and train/town wavefunctions
+add indicators for shift, alt, ctrl, add support for right sides too
+add train and town/city wavefunctions
 profile and reduce ram usage
-better (onscreen w/ mouse) UI
+better (onscreen w/ mouse) controls (shift, expand, zoom, autogen speed, rerender, toggle grid)
+smooth fps
+fix debug rerender and clear hotkeys
+make grid on different layer
 ui that lists all tile variants not just ones in the tile
+better right click uncollapse
+pull texture definitions into wavefunction.rs
+move rendering functions into tilegrid
+add sensible defaults for new tileopts, grids so i can just to ..Default when I need to make a new one 
 music and sfx
